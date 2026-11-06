@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Restaurant Workspace Setup</title>
+  <!-- Leaflet CSS for Map Picker -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -19,14 +21,14 @@
     <!-- Progress Indicator Strip -->
     <div class="progress-strip">
       <div class="progress-info">
-        <span class="progress-label" id="progressStepCount">Step 1 of 8</span>
+        <span class="progress-label" id="progressStepCount">Step 1 of 4</span>
         <span class="progress-title" id="progressSectionName">Account Information</span>
       </div>
       <div class="progress-bar-wrap">
         <div class="progress-track">
           <div class="progress-fill" id="progressFillBar"></div>
         </div>
-        <span class="progress-percent" id="progressPercentage">13%</span>
+        <span class="progress-percent" id="progressPercentage">25%</span>
       </div>
     </div>
 
@@ -38,11 +40,7 @@
           <div class="step active" data-step="1"><span class="step-num">1</span><span class="step-name">Owner Account</span></div>
           <div class="step" data-step="2"><span class="step-num">2</span><span class="step-name">Restaurant Details</span></div>
           <div class="step" data-step="3"><span class="step-num">3</span><span class="step-name">Location Details</span></div>
-          <div class="step" data-step="4"><span class="step-num">4</span><span class="step-name">Operations</span></div>
-          <div class="step" data-step="5"><span class="step-num">5</span><span class="step-name">Legal & Tax</span></div>
-          <div class="step" data-step="6"><span class="step-num">6</span><span class="step-name">Brand & Media</span></div>
-          <div class="step" data-step="7"><span class="step-num">7</span><span class="step-name">Settlement</span></div>
-          <div class="step" data-step="8"><span class="step-num">8</span><span class="step-name">Login & Security</span></div>
+          <div class="step" data-step="4"><span class="step-num">4</span><span class="step-name">Legal & Workspace Setup</span></div>
         </div>
       </aside>
 
@@ -100,7 +98,7 @@
               <div class="country-highlight-card">
                 <div class="country-header">
                   <label for="restaurantCountry" class="country-main-label">
-                    🌐 Which country is your restaurant located in? / ഏത് രാജ്യത്താണ് റെസ്റ്റോറന്റ് സ്ഥിതി ചെയ്യുന്നത്? <span class="req">*</span>
+                    🌐 Which country is your restaurant located in? <span class="req">*</span>
                   </label>
                   <p class="country-sub">Please select the country where the restaurant operates. The remaining details will unlock automatically based on your choice.</p>
                 </div>
@@ -120,7 +118,7 @@
 
                 <div class="country-select-box">
                   <select id="restaurantCountry" required>
-                    <option value="">-- Select Country / രാജ്യം തിരഞ്ഞെടുക്കുക --</option>
+                    <option value="">-- Select Country --</option>
                     <option value="India" data-code="+91">🇮🇳 India (+91)</option>
                     <option value="United Arab Emirates" data-code="+971">🇦🇪 United Arab Emirates (+971)</option>
                     <option value="Saudi Arabia" data-code="+966">🇸🇦 Saudi Arabia (+966)</option>
@@ -171,14 +169,62 @@
                     <input id="contactPerson" required placeholder="Contact person's full name" />
                   </div>
 
-                  <!-- WAZPP-STYLE CONTACT MOBILE NUMBER FIELD -->
+                  <!-- SINGLE STORE CONTACT (MANAGER) MOBILE NUMBER FIELD -->
                   <div class="field" id="contactPhoneContainer">
                     <!-- Populated dynamically by PhoneCountryInputComponent -->
                   </div>
 
-                  <!-- WAZPP-STYLE STORE MOBILE NUMBER FIELD -->
-                  <div class="field" id="storePhoneContainer">
-                    <!-- Populated dynamically by PhoneCountryInputComponent -->
+                  <!-- MANAGER ACCOUNT PASSWORD (Added to Basic Restaurant Details) -->
+                  <div class="field">
+                    <label>Manager Account Password <span class="req">*</span></label>
+                    <div class="password-wrap">
+                      <input id="password" type="password" minlength="8" required placeholder="Minimum 8 characters" />
+                      <button class="toggle" type="button" data-target="password">Show</button>
+                    </div>
+                    <div class="password-rules">
+                      <span>Minimum 8 characters</span>
+                      <span>Use letters and numbers</span>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label>Confirm Manager Password <span class="req">*</span></label>
+                    <div class="password-wrap">
+                      <input id="confirmPassword" type="password" minlength="8" required placeholder="Re-enter manager password" />
+                      <button class="toggle" type="button" data-target="confirmPassword">Show</button>
+                    </div>
+                  </div>
+
+                  <!-- BRAND & MEDIA UPLOADS (Moved to Restaurant Details) -->
+                  <div class="field">
+                    <label>Restaurant Logo</label>
+                    <label class="upload">
+                      <div class="upload-icon">＋</div>
+                      <strong>Upload Restaurant Logo</strong>
+                      <span>PNG / JPG · Square format recommended</span>
+                      <input type="file" accept="image/png,image/jpeg" />
+                    </label>
+                  </div>
+                  <div class="field">
+                    <label>Restaurant Cover Image</label>
+                    <label class="upload">
+                      <div class="upload-icon">＋</div>
+                      <strong>Upload Cover Image</strong>
+                      <span>PNG / JPG · Landscape format (16:9)</span>
+                      <input type="file" accept="image/png,image/jpeg" />
+                    </label>
+                  </div>
+
+                  <!-- SERVICE FORMATS (Kept from Operational Details) -->
+                  <div class="field full">
+                    <span class="group-label">Service Formats <span class="req">*</span></span>
+                    <div class="check-grid">
+                      <label class="check-option"><input type="checkbox" name="service" checked /> Sitting / Dine-in</label>
+                      <label class="check-option"><input type="checkbox" name="service" checked /> Parcel / Takeaway</label>
+                      <label class="check-option"><input type="checkbox" name="service" /> Online Delivery</label>
+                      <label class="check-option"><input type="checkbox" name="service" /> Table Reservation</label>
+                      <label class="check-option"><input type="checkbox" name="service" /> Drive-through</label>
+                    </div>
+                    <div class="hint">Select at least one service format provided by your restaurant.</div>
                   </div>
 
                   <div class="field">
@@ -212,7 +258,10 @@
               <div class="card-head-info">
                 <span class="step-badge">Section 3 · Location</span>
                 <h2>3. Location Details</h2>
-                <p>Enter the restaurant's physical address and mapping information.</p>
+                <p>Enter the restaurant's address and pinpoint exact location via Google Maps.</p>
+              </div>
+              <div class="country-pill-badge" id="locationCountryBadge">
+                📍 Country: <strong>India</strong>
               </div>
             </div>
             <div class="card-body grid">
@@ -228,331 +277,194 @@
                 <label>Landmark</label>
                 <input placeholder="Nearby landmark" />
               </div>
+
+              <!-- DYNAMIC STATE / PROVINCE BASED ON PREVIOUSLY SELECTED COUNTRY -->
               <div class="field">
                 <label>State / Province <span class="req">*</span></label>
-                <select id="state" required>
-                  <option value="">Select state / province</option>
-                  <option selected>Kerala</option>
-                  <option>Tamil Nadu</option>
-                  <option>Karnataka</option>
-                  <option>Maharashtra</option>
-                  <option>Dubai</option>
-                  <option>Abu Dhabi</option>
-                  <option>Riyadh</option>
-                  <option>Doha</option>
-                  <option>Other</option>
+                <select id="stateSelect" required>
+                  <option value="">Select State / Province</option>
                 </select>
               </div>
+
+              <!-- DYNAMIC DISTRICT / COUNTY BASED ON SELECTED STATE -->
               <div class="field">
-                <label>District / County <span class="req">*</span></label>
-                <select required>
-                  <option value="">Select district</option>
-                  <option>Thiruvananthapuram</option>
-                  <option>Kollam</option>
-                  <option>Pathanamthitta</option>
-                  <option>Alappuzha</option>
-                  <option>Kottayam</option>
-                  <option>Ernakulam</option>
-                  <option>Thrissur</option>
-                  <option>Palakkad</option>
-                  <option>Malappuram</option>
-                  <option>Kozhikode</option>
-                  <option>Wayanad</option>
-                  <option>Kannur</option>
-                  <option>Kasaragod</option>
-                  <option>Idukki</option>
-                  <option>Central District</option>
-                  <option>Other</option>
+                <label>District / Area <span class="req">*</span></label>
+                <select id="districtSelect" required>
+                  <option value="">Select District</option>
                 </select>
               </div>
+
+              <!-- CITY / TOWN TEXT INPUT -->
               <div class="field">
                 <label>City / Municipality <span class="req">*</span></label>
-                <input required placeholder="City or municipality" />
+                <input id="cityInput" required placeholder="Enter city or municipality" />
               </div>
+
+              <!-- PINCODE / POSTAL CODE TEXT INPUT -->
               <div class="field">
                 <label>Pincode / Postal Code <span class="req">*</span></label>
-                <input required placeholder="Postal or pincode" />
+                <input id="pincodeInput" required placeholder="Postal or pincode" />
               </div>
+
+              <!-- GOOGLE MAPS LOCATION (SELECTABLE ONLY VIA MAP API PICKER) -->
               <div class="field full">
-                <label>Google Maps Location</label>
-                <input type="url" placeholder="Paste Google Maps share link" />
-                <div class="hint">Optional – paste the location sharing link from Google Maps.</div>
+                <label>Google Maps Location <span class="req">*</span></label>
+                <div class="map-picker-input-group">
+                  <input
+                    type="url"
+                    id="googleMapsUrl"
+                    readonly
+                    required
+                    placeholder="Click 'Select on Google Maps' button to pin exact restaurant entrance..."
+                    class="map-readonly-input"
+                  />
+                  <button type="button" class="btn-map-picker" id="openMapPickerBtn">
+                    <span>📍</span> Select on Google Maps
+                  </button>
+                </div>
+                <div id="mapSelectedBadge" class="map-selected-badge" style="display: none;">
+                  <span class="badge-icon">✓</span>
+                  <span id="mapSelectedAddress">Google Maps Location Verified</span>
+                </div>
+                <div class="hint">Location must be picked and verified using the interactive Google Maps picker. Manual URL typing is disabled.</div>
               </div>
             </div>
             <div class="card-footer">
               <button type="button" class="btn btn-secondary" onclick="goToStep(2)">← Previous</button>
-              <button type="button" class="btn btn-primary" onclick="goToStep(4)">Next: Operational Details →</button>
+              <button type="button" class="btn btn-primary" onclick="goToStep(4)">Next: Legal & Workspace Setup →</button>
             </div>
           </section>
         </div>
 
-        <!-- ================= SECTION 4: OPERATIONAL DETAILS ================= -->
+        <!-- ================= SECTION 4: LEGAL & WORKSPACE SETUP ================= -->
         <div class="section-step" data-step="4">
           <section class="card">
             <div class="card-head">
               <div class="card-head-info">
-                <span class="step-badge">Section 4 · Operations</span>
-                <h2>4. Operational Details</h2>
-                <p>Configure seating, timings, weekly holidays, and service options.</p>
+                <span class="step-badge">Section 4 · Final Step</span>
+                <h2>4. Legal & Workspace Setup</h2>
+                <p>Provide food safety licenses, payout settlement details, and setup manager credentials.</p>
               </div>
+              <span class="tag">Final Review</span>
             </div>
-            <div class="card-body grid">
-              <div class="field">
-                <label>Seating Capacity <span class="req">*</span></label>
-                <input required type="number" min="1" placeholder="e.g. 50" />
-              </div>
-              <div class="field">
-                <label>Number of Tables <span class="req">*</span></label>
-                <input required type="number" min="1" placeholder="e.g. 12" />
-              </div>
-              <div class="field">
-                <label>Opening Time <span class="req">*</span></label>
-                <input required type="time" value="09:00" />
-              </div>
-              <div class="field">
-                <label>Closing Time <span class="req">*</span></label>
-                <input required type="time" value="23:00" />
-              </div>
-              <div class="field full">
-                <span class="group-label">Weekly Holiday <span class="req">*</span></span>
-                <div class="radio-row">
-                  <label class="radio-option"><input type="radio" name="holiday" value="yes" /> Yes</label>
-                  <label class="radio-option"><input type="radio" name="holiday" value="no" checked /> No</label>
+            <div class="card-body">
+              <!-- SUB-SECTION A: LEGAL & TAX DETAILS -->
+              <div class="merged-subsection">
+                <h3 class="subsection-title">📋 Legal & Tax Compliance</h3>
+                <div class="grid">
+                  <div class="field">
+                    <label>Food Safety License / FSSAI Number <span class="req">*</span></label>
+                    <input required placeholder="License or registration number" />
+                  </div>
+                  <div class="field">
+                    <label>License Type <span class="req">*</span></label>
+                    <select required>
+                      <option value="">Select license type</option>
+                      <option>Basic Registration</option>
+                      <option>State License</option>
+                      <option>Central License</option>
+                      <option>Municipality / Trade License</option>
+                    </select>
+                  </div>
+                  <div class="field full">
+                    <label>Food Safety / License Certificate</label>
+                    <label class="upload">
+                      <div class="upload-icon">⇧</div>
+                      <strong>Upload License Certificate</strong>
+                      <span>PDF, JPG or PNG · Max 5 MB</span>
+                      <input type="file" accept=".pdf,.jpg,.jpeg,.png" />
+                    </label>
+                  </div>
+                  <div class="field full">
+                    <span class="group-label">GST / VAT Applicable? <span class="req">*</span></span>
+                    <div class="radio-row">
+                      <label class="radio-option"><input type="radio" name="gst" value="yes" /> Yes</label>
+                      <label class="radio-option"><input type="radio" name="gst" value="no" checked /> No</label>
+                    </div>
+                  </div>
+                  <div class="field conditional" id="gstCategory">
+                    <label>GST / Tax Category <span class="req">*</span></label>
+                    <select>
+                      <option value="">Select category</option>
+                      <option>Regular</option>
+                      <option>Composition</option>
+                      <option>Other</option>
+                    </select>
+                  </div>
+                  <div class="field conditional" id="gstNumber">
+                    <label>GSTIN / Tax Registration Number <span class="req">*</span></label>
+                    <input placeholder="Enter Tax ID or GSTIN" maxlength="20" />
+                  </div>
+                  <div class="field full conditional" id="gstCertificate">
+                    <label>Tax Certificate Upload</label>
+                    <label class="upload">
+                      <div class="upload-icon">⇧</div>
+                      <strong>Upload GST / VAT Certificate</strong>
+                      <span>PDF, JPG or PNG · Max 5 MB</span>
+                      <input type="file" accept=".pdf,.jpg,.jpeg,.png" />
+                    </label>
+                  </div>
+                  <div class="field">
+                    <label>Business Registration Type <span class="req">*</span></label>
+                    <select required>
+                      <option value="">Select business type</option>
+                      <option>Proprietorship</option>
+                      <option>Partnership</option>
+                      <option>LLP</option>
+                      <option>Private Limited</option>
+                      <option>Other</option>
+                    </select>
+                  </div>
                 </div>
               </div>
-              <div class="field full conditional" id="holidayDay">
-                <label>Holiday Day <span class="req">*</span></label>
-                <select>
-                  <option value="">Select holiday day</option>
-                  <option>Monday</option>
-                  <option>Tuesday</option>
-                  <option>Wednesday</option>
-                  <option>Thursday</option>
-                  <option>Friday</option>
-                  <option>Saturday</option>
-                  <option>Sunday</option>
-                </select>
-              </div>
-              <div class="field full">
-                <span class="group-label">Service Formats <span class="req">*</span></span>
-                <div class="check-grid">
-                  <label class="check-option"><input type="checkbox" name="service" checked /> Sitting / Dine-in</label>
-                  <label class="check-option"><input type="checkbox" name="service" checked /> Parcel / Takeaway</label>
-                  <label class="check-option"><input type="checkbox" name="service" /> Online Delivery</label>
-                  <label class="check-option"><input type="checkbox" name="service" /> Table Reservation</label>
-                  <label class="check-option"><input type="checkbox" name="service" /> Drive-through</label>
+
+              <!-- SUB-SECTION B: BANKING & SETTLEMENT -->
+              <div class="merged-subsection">
+                <h3 class="subsection-title">💳 Banking & Settlement (Optional)</h3>
+                <div class="grid">
+                  <div class="field">
+                    <label>UPI ID (India) / Payment Handle</label>
+                    <input placeholder="restaurant@upi or payment handle" />
+                  </div>
+                  <div class="field">
+                    <label>Bank Account Number</label>
+                    <input placeholder="Bank account number" />
+                  </div>
+                  <div class="field">
+                    <label>Bank Name & Branch</label>
+                    <input placeholder="Bank name & branch" />
+                  </div>
+                  <div class="field">
+                    <label>IFSC Code / Routing Code / IBAN</label>
+                    <input placeholder="IFSC or IBAN" />
+                  </div>
                 </div>
-                <div class="hint">Select at least one service format.</div>
+              </div>
+
+              <!-- SUB-SECTION C: RESTAURANT LOGIN & MANAGER ACCOUNT -->
+              <div class="merged-subsection">
+                <h3 class="subsection-title">🔐 Restaurant Login & Staff Security</h3>
+                <div class="grid">
+                  <div class="field full">
+                    <label>Manager Login Account</label>
+                    <div class="synced-phone-display" id="managerLoginPhoneSynced">
+                      <span class="synced-phone-icon">📱</span>
+                      <span id="syncedManagerNumberText">No mobile number entered yet (will sync from Step 2)</span>
+                    </div>
+                    <div class="hint">The Manager/Staff login credential and password were configured in Step 2 (Basic Restaurant Details).</div>
+                  </div>
+
+                  <div class="field full">
+                    <div class="notice">
+                      <strong>Automatic Workspace Generation:</strong> Completing this form securely provisions your dedicated restaurant workspace, binds regional tax settings, and activates your manager login role.
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
             <div class="card-footer">
               <button type="button" class="btn btn-secondary" onclick="goToStep(3)">← Previous</button>
-              <button type="button" class="btn btn-primary" onclick="goToStep(5)">Next: Legal & Tax Details →</button>
-            </div>
-          </section>
-        </div>
-
-        <!-- ================= SECTION 5: LEGAL & TAX DETAILS ================= -->
-        <div class="section-step" data-step="5">
-          <section class="card">
-            <div class="card-head">
-              <div class="card-head-info">
-                <span class="step-badge">Section 5 · Legal Compliance</span>
-                <h2>5. Legal & Tax Details</h2>
-                <p>Provide applicable food safety and business registration details.</p>
-              </div>
-            </div>
-            <div class="card-body grid">
-              <div class="field">
-                <label>Food Safety License / FSSAI Number <span class="req">*</span></label>
-                <input required placeholder="License or FSSAI number" />
-              </div>
-              <div class="field">
-                <label>License Type <span class="req">*</span></label>
-                <select required>
-                  <option value="">Select license type</option>
-                  <option>Basic Registration</option>
-                  <option>State License</option>
-                  <option>Central License</option>
-                  <option>Municipality / Trade License</option>
-                </select>
-              </div>
-              <div class="field full">
-                <label>Food Safety / License Certificate</label>
-                <label class="upload">
-                  <div class="upload-icon">⇧</div>
-                  <strong>Upload Certificate</strong>
-                  <span>PDF, JPG or PNG · Max 5 MB</span>
-                  <input type="file" accept=".pdf,.jpg,.jpeg,.png" />
-                </label>
-              </div>
-              <div class="field full">
-                <span class="group-label">GST / VAT Applicable? <span class="req">*</span></span>
-                <div class="radio-row">
-                  <label class="radio-option"><input type="radio" name="gst" value="yes" /> Yes</label>
-                  <label class="radio-option"><input type="radio" name="gst" value="no" checked /> No</label>
-                </div>
-              </div>
-              <div class="field conditional" id="gstCategory">
-                <label>GST / Tax Category <span class="req">*</span></label>
-                <select>
-                  <option value="">Select category</option>
-                  <option>Regular</option>
-                  <option>Composition</option>
-                  <option>Other</option>
-                </select>
-              </div>
-              <div class="field conditional" id="gstNumber">
-                <label>GSTIN / Tax Registration Number <span class="req">*</span></label>
-                <input placeholder="Enter Tax ID or GSTIN" maxlength="20" />
-              </div>
-              <div class="field full conditional" id="gstCertificate">
-                <label>Tax Certificate Upload</label>
-                <label class="upload">
-                  <div class="upload-icon">⇧</div>
-                  <strong>Upload GST / VAT Certificate</strong>
-                  <span>PDF, JPG or PNG · Max 5 MB</span>
-                  <input type="file" accept=".pdf,.jpg,.jpeg,.png" />
-                </label>
-              </div>
-              <div class="field">
-                <label>Business Registration Type <span class="req">*</span></label>
-                <select required>
-                  <option value="">Select business type</option>
-                  <option>Proprietorship</option>
-                  <option>Partnership</option>
-                  <option>LLP</option>
-                  <option>Private Limited</option>
-                  <option>Other</option>
-                </select>
-              </div>
-            </div>
-            <div class="card-footer">
-              <button type="button" class="btn btn-secondary" onclick="goToStep(4)">← Previous</button>
-              <button type="button" class="btn btn-primary" onclick="goToStep(6)">Next: Brand & Media →</button>
-            </div>
-          </section>
-        </div>
-
-        <!-- ================= SECTION 6: BRAND & UPLOADS ================= -->
-        <div class="section-step" data-step="6">
-          <section class="card">
-            <div class="card-head">
-              <div class="card-head-info">
-                <span class="step-badge">Section 6 · Branding</span>
-                <h2>6. Brand & Uploads</h2>
-                <p>Upload your restaurant's logo and banner image to personalize your store profile.</p>
-              </div>
-              <span class="tag optional">Optional</span>
-            </div>
-            <div class="card-body grid">
-              <div class="field">
-                <label>Restaurant Logo</label>
-                <label class="upload">
-                  <div class="upload-icon">＋</div>
-                  <strong>Upload Restaurant Logo</strong>
-                  <span>PNG / JPG · Square format recommended</span>
-                  <input type="file" accept="image/png,image/jpeg" />
-                </label>
-              </div>
-              <div class="field">
-                <label>Restaurant Cover Image</label>
-                <label class="upload">
-                  <div class="upload-icon">＋</div>
-                  <strong>Upload Cover Image</strong>
-                  <span>PNG / JPG · Landscape format (16:9)</span>
-                  <input type="file" accept="image/png,image/jpeg" />
-                </label>
-              </div>
-            </div>
-            <div class="card-footer">
-              <button type="button" class="btn btn-secondary" onclick="goToStep(5)">← Previous</button>
-              <button type="button" class="btn btn-primary" onclick="goToStep(7)">Next: Banking & Settlement →</button>
-            </div>
-          </section>
-        </div>
-
-        <!-- ================= SECTION 7: BANKING & SETTLEMENT ================= -->
-        <div class="section-step" data-step="7">
-          <section class="card">
-            <div class="card-head">
-              <div class="card-head-info">
-                <span class="step-badge">Section 7 · Settlements</span>
-                <h2>7. Banking & Settlement</h2>
-                <p>Provide your account or UPI details for direct payout settlements.</p>
-              </div>
-              <span class="tag optional">Optional</span>
-            </div>
-            <div class="card-body grid">
-              <div class="field">
-                <label>UPI ID (India) / Payment Handle</label>
-                <input placeholder="restaurant@upi or payment handle" />
-                <div class="hint">Enter the UPI ID or settlement handle for instant payouts.</div>
-              </div>
-              <div class="field">
-                <label>Bank Account Number (Optional)</label>
-                <input placeholder="Account number" />
-              </div>
-              <div class="field">
-                <label>Bank Name / Branch</label>
-                <input placeholder="Bank name & branch" />
-              </div>
-              <div class="field">
-                <label>IFSC Code / Routing Code / IBAN</label>
-                <input placeholder="IFSC or IBAN" />
-              </div>
-            </div>
-            <div class="card-footer">
-              <button type="button" class="btn btn-secondary" onclick="goToStep(6)">← Previous</button>
-              <button type="button" class="btn btn-primary" onclick="goToStep(8)">Next: Login & Security →</button>
-            </div>
-          </section>
-        </div>
-
-        <!-- ================= SECTION 8: RESTAURANT LOGIN & STAFF ACCOUNT ================= -->
-        <div class="section-step" data-step="8">
-          <section class="card">
-            <div class="card-head">
-              <div class="card-head-info">
-                <span class="step-badge">Section 8 · Final Credentials</span>
-                <h2>8. Restaurant Login & Staff Account</h2>
-                <p>Create login credentials for manager access to this restaurant workspace.</p>
-              </div>
-              <span class="tag">Auto staff creation</span>
-            </div>
-            <div class="card-body grid">
-              <!-- WAZPP-STYLE RESTAURANT LOGIN MOBILE NUMBER -->
-              <div class="field full" id="loginPhoneContainer">
-                <!-- Populated dynamically by PhoneCountryInputComponent -->
-              </div>
-
-              <div class="field">
-                <label>Password <span class="req">*</span></label>
-                <div class="password-wrap">
-                  <input id="password" type="password" minlength="8" required placeholder="Minimum 8 characters" />
-                  <button class="toggle" type="button" data-target="password">Show</button>
-                </div>
-                <div class="password-rules">
-                  <span>Minimum 8 characters</span>
-                  <span>Use letters and numbers</span>
-                </div>
-              </div>
-              <div class="field">
-                <label>Confirm Password <span class="req">*</span></label>
-                <div class="password-wrap">
-                  <input id="confirmPassword" type="password" minlength="8" required placeholder="Re-enter password" />
-                  <button class="toggle" type="button" data-target="confirmPassword">Show</button>
-                </div>
-              </div>
-              <div class="field full">
-                <div class="notice">
-                  <strong>Automatic Workspace Generation:</strong> When setup is completed, the system provisions your isolated restaurant workspace and configures the manager access role securely.
-                </div>
-              </div>
-            </div>
-            <div class="card-footer">
-              <button type="button" class="btn btn-secondary" onclick="goToStep(7)">← Previous</button>
-              <button type="submit" class="btn btn-primary" style="background: var(--brand-dark); font-size: 14px; padding: 13px 28px;">
+              <button type="submit" class="btn btn-primary" style="background: var(--brand-dark); font-size: 14px; padding: 13px 30px;">
                 Complete Setup & Launch Workspace&nbsp; ✓
               </button>
             </div>
@@ -564,7 +476,40 @@
     </div>
   </main>
 
-  <!-- External JavaScript file -->
+  <!-- ================================================================
+       INTERACTIVE GOOGLE MAPS LOCATION PICKER MODAL
+       ================================================================ -->
+  <div id="mapModal" class="map-modal-backdrop" style="display: none;">
+    <div class="map-modal-content">
+      <div class="map-modal-header">
+        <div>
+          <h3>Select Restaurant Location on Map</h3>
+          <p id="mapModalSub">Search for your area or click directly on the map to drop the pin at your entrance.</p>
+        </div>
+        <button type="button" class="map-modal-close" id="closeMapModalBtn">&times;</button>
+      </div>
+      <div class="map-modal-body">
+        <div class="map-search-bar">
+          <input type="text" id="mapSearchInput" placeholder="Search address, landmark or locality..." />
+          <button type="button" id="mapSearchBtn">Search</button>
+        </div>
+        <div id="interactiveMap" class="interactive-map-area"></div>
+        <div class="map-preview-bar">
+          <div class="map-preview-coords">
+            <strong>Selected Pin:</strong> <span id="mapCoordsDisplay">Click on the map above to drop the pin</span>
+          </div>
+        </div>
+      </div>
+      <div class="map-modal-footer">
+        <button type="button" class="btn btn-secondary" id="cancelMapModalBtn">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirmMapLocationBtn" disabled>Confirm & Apply Location</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaflet JS for Map Picker -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- External Application Logic -->
   <script src="script.js"></script>
 </body>
 </html>
