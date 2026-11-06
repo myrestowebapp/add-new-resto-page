@@ -169,9 +169,16 @@
                     <input id="contactPerson" required placeholder="Contact person's full name" />
                   </div>
 
+                  <!-- RESTAURANT OFFICIAL EMAIL ADDRESS (MANDATORY) -->
+                  <div class="field">
+                    <label>Restaurant Official Email Address <span class="req">*</span></label>
+                    <input type="email" id="storeEmail" required placeholder="store@restaurant.com" />
+                    <div class="hint">Workspace invoices, daily reports and admin alerts will be sent to this email.</div>
+                  </div>
+
                   <!-- SINGLE STORE CONTACT (MANAGER) MOBILE NUMBER FIELD -->
-                  <div class="field" id="contactPhoneContainer">
-                    <!-- Populated dynamically by PhoneCountryInputComponent -->
+                  <div class="field full" id="contactPhoneContainer">
+                    <!-- Populated dynamically by PhoneCountryInputComponent with WhatsApp OTP verification -->
                   </div>
 
                   <!-- MANAGER ACCOUNT PASSWORD (Added to Basic Restaurant Details) -->
@@ -194,24 +201,59 @@
                     </div>
                   </div>
 
-                  <!-- BRAND & MEDIA UPLOADS (Moved to Restaurant Details) -->
+                  <!-- BRAND & MEDIA UPLOADS (WITH DEDICATED IMAGE CROPPERS) -->
                   <div class="field">
-                    <label>Restaurant Logo</label>
-                    <label class="upload">
+                    <div class="field-label-row">
+                      <label>Restaurant Logo</label>
+                      <span class="badge-ratio">400 × 400 px</span>
+                    </div>
+                    <label class="upload" id="logoUploadBox">
                       <div class="upload-icon">＋</div>
-                      <strong>Upload Restaurant Logo</strong>
-                      <span>PNG / JPG · Square format recommended</span>
-                      <input type="file" accept="image/png,image/jpeg" />
+                      <strong id="logoUploadTitle">Upload Restaurant Logo</strong>
+                      <span>PNG / JPG · Square (400 × 400)</span>
+                      <input type="file" id="logoFileInput" accept="image/png,image/jpeg,image/webp" />
                     </label>
+                    <div class="upload-preview-card" id="logoPreviewCard" style="display: none;">
+                      <div class="preview-img-wrap logo-preview-wrap">
+                        <img id="logoPreviewImg" alt="Cropped Logo Preview" />
+                      </div>
+                      <div class="preview-info">
+                        <strong>Logo Cropped & Ready</strong>
+                        <span class="preview-spec">Square · 400 × 400 px</span>
+                        <div class="preview-actions">
+                          <button type="button" class="btn-recrop" id="reCropLogoBtn">Re-crop</button>
+                          <button type="button" class="btn-remove-crop" id="removeLogoBtn">Change</button>
+                        </div>
+                      </div>
+                    </div>
+                    <input type="hidden" id="croppedLogoData" name="croppedLogoData" />
                   </div>
+
                   <div class="field">
-                    <label>Restaurant Cover Image</label>
-                    <label class="upload">
+                    <div class="field-label-row">
+                      <label>Restaurant Cover Image</label>
+                      <span class="badge-ratio">16:6 Landscape</span>
+                    </div>
+                    <label class="upload" id="coverUploadBox">
                       <div class="upload-icon">＋</div>
-                      <strong>Upload Cover Image</strong>
-                      <span>PNG / JPG · Landscape format (16:9)</span>
-                      <input type="file" accept="image/png,image/jpeg" />
+                      <strong id="coverUploadTitle">Upload Cover Image</strong>
+                      <span>PNG / JPG · Landscape format (16:6)</span>
+                      <input type="file" id="coverFileInput" accept="image/png,image/jpeg,image/webp" />
                     </label>
+                    <div class="upload-preview-card" id="coverPreviewCard" style="display: none;">
+                      <div class="preview-img-wrap cover-preview-wrap">
+                        <img id="coverPreviewImg" alt="Cropped Cover Preview" />
+                      </div>
+                      <div class="preview-info">
+                        <strong>Cover Image Cropped & Ready</strong>
+                        <span class="preview-spec">Landscape format (16:6)</span>
+                        <div class="preview-actions">
+                          <button type="button" class="btn-recrop" id="reCropCoverBtn">Re-crop</button>
+                          <button type="button" class="btn-remove-crop" id="removeCoverBtn">Change</button>
+                        </div>
+                      </div>
+                    </div>
+                    <input type="hidden" id="croppedCoverData" name="croppedCoverData" />
                   </div>
 
                   <!-- SERVICE FORMATS (Kept from Operational Details) -->
@@ -348,71 +390,62 @@
               <span class="tag">Final Review</span>
             </div>
             <div class="card-body">
-              <!-- SUB-SECTION A: LEGAL & TAX DETAILS -->
+              <!-- SUB-SECTION A: LEGAL & TAX DETAILS (DYNAMICALLY ADAPTED BY COUNTRY) -->
               <div class="merged-subsection">
-                <h3 class="subsection-title">📋 Legal & Tax Compliance</h3>
+                <div class="subsection-header-flex">
+                  <h3 class="subsection-title" id="legalSectionTitle">📋 Legal & Tax Compliance</h3>
+                  <span class="region-badge-pill" id="legalCountryBadge">🇮🇳 India Compliance</span>
+                </div>
                 <div class="grid">
                   <div class="field">
-                    <label>Food Safety License / FSSAI Number <span class="req">*</span></label>
-                    <input required placeholder="License or registration number" />
+                    <label id="foodLicenseLabel">Food Safety License / FSSAI Number <span class="req">*</span></label>
+                    <input id="foodLicenseInput" required placeholder="e.g. 14-digit FSSAI Registration" />
                   </div>
                   <div class="field">
-                    <label>License Type <span class="req">*</span></label>
-                    <select required>
+                    <label id="licenseTypeLabel">License Type <span class="req">*</span></label>
+                    <select id="licenseTypeSelect" required>
                       <option value="">Select license type</option>
-                      <option>Basic Registration</option>
-                      <option>State License</option>
-                      <option>Central License</option>
-                      <option>Municipality / Trade License</option>
                     </select>
                   </div>
                   <div class="field full">
-                    <label>Food Safety / License Certificate</label>
+                    <label id="licenseCertLabel">Food Safety / License Certificate</label>
                     <label class="upload">
                       <div class="upload-icon">⇧</div>
-                      <strong>Upload License Certificate</strong>
+                      <strong id="licenseCertUploadText">Upload License Certificate</strong>
                       <span>PDF, JPG or PNG · Max 5 MB</span>
                       <input type="file" accept=".pdf,.jpg,.jpeg,.png" />
                     </label>
                   </div>
                   <div class="field full">
-                    <span class="group-label">GST / VAT Applicable? <span class="req">*</span></span>
+                    <span class="group-label" id="taxApplicableQuestion">GST Applicable? <span class="req">*</span></span>
                     <div class="radio-row">
                       <label class="radio-option"><input type="radio" name="gst" value="yes" /> Yes</label>
                       <label class="radio-option"><input type="radio" name="gst" value="no" checked /> No</label>
                     </div>
                   </div>
                   <div class="field conditional" id="gstCategory">
-                    <label>GST / Tax Category <span class="req">*</span></label>
-                    <select>
+                    <label id="taxCategoryLabel">GST Category <span class="req">*</span></label>
+                    <select id="taxCategorySelect">
                       <option value="">Select category</option>
-                      <option>Regular</option>
-                      <option>Composition</option>
-                      <option>Other</option>
                     </select>
                   </div>
                   <div class="field conditional" id="gstNumber">
-                    <label>GSTIN / Tax Registration Number <span class="req">*</span></label>
-                    <input placeholder="Enter Tax ID or GSTIN" maxlength="20" />
+                    <label id="taxIdLabel">GSTIN (15 Digits) <span class="req">*</span></label>
+                    <input id="taxIdInput" placeholder="Enter Tax ID or GSTIN" maxlength="20" />
                   </div>
                   <div class="field full conditional" id="gstCertificate">
-                    <label>Tax Certificate Upload</label>
+                    <label id="taxCertLabel">Tax Certificate Upload</label>
                     <label class="upload">
                       <div class="upload-icon">⇧</div>
-                      <strong>Upload GST / VAT Certificate</strong>
+                      <strong id="taxCertUploadText">Upload Tax Certificate</strong>
                       <span>PDF, JPG or PNG · Max 5 MB</span>
                       <input type="file" accept=".pdf,.jpg,.jpeg,.png" />
                     </label>
                   </div>
                   <div class="field">
                     <label>Business Registration Type <span class="req">*</span></label>
-                    <select required>
+                    <select id="businessTypeSelect" required>
                       <option value="">Select business type</option>
-                      <option>Proprietorship</option>
-                      <option>Partnership</option>
-                      <option>LLP</option>
-                      <option>Private Limited</option>
-                      <option>Other</option>
                     </select>
                   </div>
                 </div>
@@ -503,6 +536,129 @@
       <div class="map-modal-footer">
         <button type="button" class="btn btn-secondary" id="cancelMapModalBtn">Cancel</button>
         <button type="button" class="btn btn-primary" id="confirmMapLocationBtn" disabled>Confirm & Apply Location</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       WHATSAPP OTP VERIFICATION MODAL
+       ================================================================ -->
+  <div id="otpModal" class="otp-modal-backdrop" style="display: none;">
+    <div class="otp-modal-content">
+      <div class="otp-top-bar"></div>
+      <button type="button" class="otp-modal-close" id="closeOtpModalBtn">&times;</button>
+      
+      <div class="otp-modal-header">
+        <div class="otp-wa-icon-badge">
+          <span>💬</span>
+        </div>
+        <h3>Verify WhatsApp Number</h3>
+        <p id="otpModalSub">We have sent a 6-digit verification code via WhatsApp to <br /><strong id="otpTargetPhoneDisplay">+91 98765 43210</strong></p>
+      </div>
+
+      <div class="otp-modal-body">
+        <div class="otp-code-group" id="otpCodeGroup" role="group" aria-label="One-time WhatsApp verification code">
+          <input type="text" inputmode="numeric" class="otp-digit-box" maxlength="1" data-index="0" autocomplete="one-time-code" autofocus />
+          <input type="text" inputmode="numeric" class="otp-digit-box" maxlength="1" data-index="1" />
+          <input type="text" inputmode="numeric" class="otp-digit-box" maxlength="1" data-index="2" />
+          <input type="text" inputmode="numeric" class="otp-digit-box" maxlength="1" data-index="3" />
+          <input type="text" inputmode="numeric" class="otp-digit-box" maxlength="1" data-index="4" />
+          <input type="text" inputmode="numeric" class="otp-digit-box" maxlength="1" data-index="5" />
+        </div>
+
+        <div class="otp-demo-hint">
+          <span>💡 Test Code: <strong>123456</strong> (or enter any 6 digits to verify)</span>
+        </div>
+
+        <div id="otpErrorAlert" class="otp-error-alert" style="display: none;">
+          ⚠️ Please enter the complete 6-digit verification code.
+        </div>
+
+        <div class="otp-resend-row">
+          <span id="otpTimerText">Resend code via WhatsApp in <strong id="otpCountdown">30s</strong></span>
+          <button type="button" id="resendOtpBtn" class="otp-resend-link" style="display: none;">Resend Code via WhatsApp</button>
+        </div>
+      </div>
+
+      <div class="otp-modal-footer">
+        <button type="button" class="btn btn-secondary" id="cancelOtpModalBtn">Cancel</button>
+        <button type="button" class="btn btn-whatsapp" id="verifyOtpBtn">
+          <span>✓</span> Verify & Confirm Number
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       IMAGE CROPPER MODAL (LOGO 400x400 & COVER 16:6)
+       ================================================================ -->
+  <div id="cropperModal" class="cropper-modal-backdrop" style="display: none;">
+    <div class="cropper-modal-content">
+      <div class="cropper-top-bar"></div>
+      
+      <!-- Modal Header -->
+      <div class="cropper-modal-header">
+        <div>
+          <h3 id="cropperTitle">Crop Restaurant Logo</h3>
+          <p id="cropperSubtitle">Drag to position and use the zoom slider to frame your image perfectly.</p>
+        </div>
+        <button type="button" class="cropper-modal-close" id="closeCropperModalBtn">&times;</button>
+      </div>
+
+      <!-- Cropping Viewport Area -->
+      <div class="cropper-viewport-wrap" id="cropperViewportWrap">
+        <div id="cropperCanvasArea" class="cropper-canvas-area">
+          <div id="cropperTransformContainer" class="cropper-transform-container">
+            <img id="cropperSourceImg" alt="Crop Preview" draggable="false" />
+          </div>
+
+          <!-- Dark Overlay Mask -->
+          <svg class="cropper-svg-mask" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <mask id="cropMaskHole">
+                <rect width="100%" height="100%" fill="white" />
+                <rect id="cropMaskRect" fill="black" rx="12" />
+              </mask>
+            </defs>
+            <rect width="100%" height="100%" fill="rgba(15, 23, 42, 0.72)" mask="url(#cropMaskHole)" />
+          </svg>
+
+          <!-- Framing Border with Grid & Corner Accents -->
+          <div id="cropFrameBox" class="crop-frame-box">
+            <div class="crop-grid-lines">
+              <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+              <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+              <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+            </div>
+            <div class="crop-corner top-left"></div>
+            <div class="crop-corner top-right"></div>
+            <div class="crop-corner bottom-left"></div>
+            <div class="crop-corner bottom-right"></div>
+          </div>
+
+          <div class="cropper-guide-badge">
+            <span id="cropperDimensionsBadge">400 × 400 px</span> · Drag to move · Scroll to zoom
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls: Zoom Slider & Actions -->
+      <div class="cropper-controls-bar">
+        <div class="cropper-zoom-row">
+          <span class="zoom-label">🔍 Zoom:</span>
+          <button type="button" class="btn-zoom-step" id="zoomOutBtn">−</button>
+          <input type="range" id="cropperZoomSlider" min="0.5" max="3" step="0.05" value="1" />
+          <button type="button" class="btn-zoom-step" id="zoomInBtn">＋</button>
+          <button type="button" class="btn-zoom-reset" id="zoomResetBtn">Reset</button>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="cropper-modal-footer">
+        <button type="button" class="btn btn-secondary" id="cancelCropperBtn">Cancel</button>
+        <button type="button" class="btn btn-primary" id="applyCropBtn" style="background: var(--brand); border-color: var(--brand);">
+          <span>✓</span> Apply Crop & Use Image
+        </button>
       </div>
     </div>
   </div>

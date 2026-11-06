@@ -152,7 +152,7 @@ const PRELOADED_LOCATIONS = {
 };
 
 /* ==========================================================
-   PHONE COUNTRY INPUT COMPONENT (SINGLE CLEAN TRIGGER)
+   PHONE COUNTRY INPUT COMPONENT (WITH WHATSAPP OTP VERIFICATION)
    ========================================================== */
 class PhoneCountryInputComponent {
   constructor(containerId, options) {
@@ -164,6 +164,8 @@ class PhoneCountryInputComponent {
     this.currentCountry = this.initialCountry;
     this.dropdownOpen = false;
     this.searchQuery = '';
+    this.isVerified = false;
+    this.verifiedPhoneNumber = '';
     this.render();
     this.bindEvents();
   }
@@ -231,6 +233,23 @@ class PhoneCountryInputComponent {
           </span>
           <span class="phone-footer-wa">WhatsApp enabled</span>
         </div>
+
+        <!-- WhatsApp OTP Verification Strip -->
+        <div class="phone-verify-strip" id="${this.id}-verifyStrip">
+          <div class="verify-status-col">
+            <div id="${this.id}-unverifiedBadge" class="phone-verify-status unverified">
+              <span class="status-dot"></span>
+              <span class="status-text">WhatsApp OTP Verification Required</span>
+            </div>
+            <div id="${this.id}-verifiedBadge" class="phone-verify-status verified" style="display: none;">
+              <span class="status-icon">✓</span>
+              <span class="status-text" id="${this.id}-verifiedText">Verified via WhatsApp OTP</span>
+            </div>
+          </div>
+          <button type="button" id="${this.id}-verifyBtn" class="btn-verify-otp">
+            <span>💬</span> Verify via WhatsApp OTP
+          </button>
+        </div>
       </div>
     `;
 
@@ -246,6 +265,10 @@ class PhoneCountryInputComponent {
     this.dialEl = document.getElementById(`${this.id}-dial`);
     this.hint = document.getElementById(`${this.id}-hint`);
     this.iconWrap = document.getElementById(`${this.id}-iconWrap`);
+    this.verifyBtn = document.getElementById(`${this.id}-verifyBtn`);
+    this.unverifiedBadge = document.getElementById(`${this.id}-unverifiedBadge`);
+    this.verifiedBadge = document.getElementById(`${this.id}-verifiedBadge`);
+    this.verifiedText = document.getElementById(`${this.id}-verifiedText`);
   }
 
   bindEvents() {
@@ -266,8 +289,19 @@ class PhoneCountryInputComponent {
       }
       this.input.value = raw;
       this.updateState();
+
+      // If user modifies verified phone number, invalidate verification status
+      if (this.isVerified && this.getFullNumber() !== this.verifiedPhoneNumber) {
+        this.setVerified(false);
+      }
+      
       // Sync with Step 4 manager display
       updateSyncedManagerNumber();
+    });
+
+    this.verifyBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.handleVerifyClick();
     });
 
     document.addEventListener('click', (e) => {
@@ -275,6 +309,37 @@ class PhoneCountryInputComponent {
         this.closeDropdown();
       }
     });
+  }
+
+  handleVerifyClick() {
+    if (!this.isValid()) {
+      showNotification(`Please enter a complete ${this.currentCountry.mobileDigits}-digit mobile number first.`, 'error');
+      this.input.focus();
+      return;
+    }
+    const fullNumber = this.getFullNumber();
+    openWhatsAppOtpModal(fullNumber, () => {
+      this.setVerified(true);
+    });
+  }
+
+  setVerified(status) {
+    this.isVerified = !!status;
+    if (this.isVerified) {
+      this.verifiedPhoneNumber = this.getFullNumber();
+      this.unverifiedBadge.style.display = 'none';
+      this.verifiedBadge.style.display = 'inline-flex';
+      this.verifiedText.textContent = `✓ ${this.verifiedPhoneNumber} Verified`;
+      this.verifyBtn.textContent = 'Re-verify';
+      this.verifyBtn.classList.add('btn-reverify');
+    } else {
+      this.verifiedPhoneNumber = '';
+      this.unverifiedBadge.style.display = 'inline-flex';
+      this.verifiedBadge.style.display = 'none';
+      this.verifyBtn.innerHTML = '<span>💬</span> Verify via WhatsApp OTP';
+      this.verifyBtn.classList.remove('btn-reverify');
+    }
+    updateSyncedManagerNumber();
   }
 
   toggleDropdown() {
@@ -364,6 +429,12 @@ class PhoneCountryInputComponent {
     }
 
     this.hint.innerHTML = `Standard format for <strong>${countryObj.name}</strong> (${countryObj.mobileDigits} digits)`;
+    
+    // Invalidate verification if country changes
+    if (this.isVerified) {
+      this.setVerified(false);
+    }
+
     this.updateState();
     updateSyncedManagerNumber();
   }
@@ -417,7 +488,11 @@ function updateSyncedManagerNumber() {
   if (!syncedDisplay) return;
   const full = contactPhoneInput.getFullNumber();
   if (full && contactPhoneInput.isValid()) {
-    syncedDisplay.innerHTML = `<strong style="color: #18794e;">${full}</strong> · Verified Store Manager Number`;
+    if (contactPhoneInput.isVerified) {
+      syncedDisplay.innerHTML = `<strong style="color: #18794e;">${full}</strong> · <span style="display:inline-flex;align-items:center;gap:4px;color:#008767;background:#e6f7f2;border:1px solid #a7ebd8;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">✓ Verified via WhatsApp OTP</span>`;
+    } else {
+      syncedDisplay.innerHTML = `<span>${full}</span> <span style="color:#b76e00;font-size:11px;font-weight:700;">(WhatsApp OTP verification pending in Step 2)</span>`;
+    }
   } else if (full) {
     syncedDisplay.innerHTML = `<span>${full}</span> (Incomplete number)`;
   } else {
@@ -477,6 +552,9 @@ function applyCountrySelection(countryValue) {
 
   // Populate Location Details states without asking country again
   populateStatesForCountry(countryValue);
+
+  // Update Step 4 Legal & Tax Compliance fields for selected country
+  updateLegalSectionForCountry(countryValue);
 }
 
 countrySelect.addEventListener('change', () => {
@@ -571,6 +649,353 @@ stateSelect.addEventListener('change', () => {
 
 // Initial call for India
 populateStatesForCountry('India');
+
+/* ==========================================================
+   COUNTRY-SPECIFIC LEGAL & TAX COMPLIANCE SPECIFICATION
+   ========================================================== */
+const COUNTRY_LEGAL_CONFIG = {
+  'India': {
+    badge: '🇮🇳 India Compliance (FSSAI & GST)',
+    licenseLabel: 'Food Safety License / FSSAI Number',
+    licensePlaceholder: 'e.g. 14-digit FSSAI Registration / State License',
+    licenseTypes: [
+      'Basic FSSAI Registration (Petty Food Business)',
+      'State Food Safety License',
+      'Central Food Safety License'
+    ],
+    taxName: 'GST',
+    taxApplicableQuestion: 'GST Applicable?',
+    taxCategoryLabel: 'GST Category',
+    taxCategories: [
+      'Regular Taxpayer',
+      'Composition Scheme (Restaurant 5%)',
+      'Exempted / Below Turnover Threshold'
+    ],
+    taxIdLabel: 'GSTIN (15 Digits)',
+    taxIdPlaceholder: 'e.g. 32AAAAA0000A1Z5 (15 digits)',
+    taxCertLabel: 'GST Registration Certificate',
+    taxCertUploadText: 'Upload GST Certificate (PDF / Image)',
+    businessTypes: [
+      'Sole Proprietorship',
+      'Partnership Firm',
+      'Limited Liability Partnership (LLP)',
+      'Private Limited Company (Pvt Ltd)',
+      'Public Limited Company',
+      'One Person Company (OPC)'
+    ]
+  },
+  'Saudi Arabia': {
+    badge: '🇸🇦 Saudi Arabia (ZATCA & Baladiya)',
+    licenseLabel: 'Baladiya / SFDA Food License Number',
+    licensePlaceholder: 'e.g. Baladiya Municipality Permit / SFDA ID',
+    licenseTypes: [
+      'Municipality (Baladiya) Food & Health License',
+      'Commercial Registration (CR - Sijil Tijari)',
+      'SFDA Food Facility Registration'
+    ],
+    taxName: 'VAT',
+    taxApplicableQuestion: 'VAT (ZATCA) Applicable?',
+    taxCategoryLabel: 'VAT Category (ZATCA)',
+    taxCategories: [
+      'Standard Rated (15%)',
+      'Zero-Rated Supplies (0%)',
+      'Exempt Supplies'
+    ],
+    taxIdLabel: 'ZATCA VAT / TIN (15 Digits)',
+    taxIdPlaceholder: 'e.g. 300000000000003 (15 digits)',
+    taxCertLabel: 'ZATCA VAT Certificate',
+    taxCertUploadText: 'Upload ZATCA VAT Certificate (PDF / Image)',
+    businessTypes: [
+      'Limited Liability Company (LLC - Sharikah Dhat Mas\'ouliyyah)',
+      'Sole Proprietorship (Muassasa Fardiyyah)',
+      'Simplified Joint Stock Company',
+      'Joint Stock Company',
+      'Branch of Foreign Company'
+    ]
+  },
+  'United Arab Emirates': {
+    badge: '🇦🇪 UAE (FTA & Economic Dept)',
+    licenseLabel: 'Trade License / Food Permit Number',
+    licensePlaceholder: 'e.g. DED Trade License / Municipality Permit',
+    licenseTypes: [
+      'Commercial Trade License (Mainland DED)',
+      'Professional License',
+      'Tourism & Hospitality License',
+      'Free Zone Company License'
+    ],
+    taxName: 'VAT',
+    taxApplicableQuestion: 'VAT (FTA) Applicable?',
+    taxCategoryLabel: 'VAT Category (FTA)',
+    taxCategories: [
+      'Standard Rated (5%)',
+      'Zero-Rated Supplies (0%)',
+      'Exempt Supplies'
+    ],
+    taxIdLabel: 'Tax Registration Number (TRN - 15 Digits)',
+    taxIdPlaceholder: 'e.g. 100000000000003 (15 digits)',
+    taxCertLabel: 'FTA VAT Certificate',
+    taxCertUploadText: 'Upload FTA VAT Certificate (PDF / Image)',
+    businessTypes: [
+      'Limited Liability Company (LLC)',
+      'Sole Establishment (Muassasa)',
+      'Civil Company',
+      'Free Zone Establishment / Company (FZE / FZCO)',
+      'Branch of Foreign / Local Company'
+    ]
+  },
+  'Qatar': {
+    badge: '🇶🇦 Qatar Compliance',
+    licenseLabel: 'Baladiya Municipality / Commercial Permit',
+    licensePlaceholder: 'e.g. Ministry of Commerce & Municipality License',
+    licenseTypes: [
+      'Municipality Food Hygiene License',
+      'Commercial Registration (CR Qatar)',
+      'Tourism Authority License'
+    ],
+    taxName: 'Tax Card',
+    taxApplicableQuestion: 'Tax Card / Corporate Tax Applicable?',
+    taxCategoryLabel: 'Tax Status',
+    taxCategories: ['Standard Tax Registered', 'Exempted Entity'],
+    taxIdLabel: 'Tax Identification Number (TIN)',
+    taxIdPlaceholder: 'e.g. 00000000 (TIN Number)',
+    taxCertLabel: 'Qatar Tax Card / CR Certificate',
+    taxCertUploadText: 'Upload Tax Card / CR Copy',
+    businessTypes: [
+      'Limited Liability Company (W.L.L. / LLC)',
+      'Sole Proprietorship',
+      'General Partnership',
+      'Branch Office'
+    ]
+  },
+  'Oman': {
+    badge: '🇴🇲 Oman Compliance',
+    licenseLabel: 'Municipality Food License / CR Number',
+    licensePlaceholder: 'e.g. Commercial Registration or Muscat Municipality Permit',
+    licenseTypes: [
+      'Municipality Food Establishment Permit',
+      'Commercial Registration (MOCI Oman)'
+    ],
+    taxName: 'VAT',
+    taxApplicableQuestion: 'VAT (OTA 5%) Applicable?',
+    taxCategoryLabel: 'VAT Category (Oman Tax Authority)',
+    taxCategories: ['Standard Rated (5%)', 'Zero-Rated', 'Exempt'],
+    taxIdLabel: 'VAT Identification Number (15 Digits)',
+    taxIdPlaceholder: 'e.g. OM100000000000003',
+    taxCertLabel: 'Oman VAT Certificate',
+    taxCertUploadText: 'Upload VAT Certificate (PDF / Image)',
+    businessTypes: [
+      'Limited Liability Company (LLC)',
+      'Sole Proprietorship',
+      'Joint Stock Company (SAOC / SAOG)',
+      'Foreign Branch'
+    ]
+  },
+  'Kuwait': {
+    badge: '🇰🇼 Kuwait Compliance',
+    licenseLabel: 'PAFN Food Safety & Commercial License',
+    licensePlaceholder: 'e.g. Public Authority for Food & Nutrition Permit',
+    licenseTypes: [
+      'PAFN Food Safety License',
+      'Ministry of Commerce Commercial License'
+    ],
+    taxName: 'Commercial Tax',
+    taxApplicableQuestion: 'Commercial Registration / Tax Registered?',
+    taxCategoryLabel: 'Registration Category',
+    taxCategories: ['Standard Commercial Registration', 'Exempt'],
+    taxIdLabel: 'Commercial Registration (CR Number)',
+    taxIdPlaceholder: 'e.g. Kuwait CR Number',
+    taxCertLabel: 'Commercial License Certificate',
+    taxCertUploadText: 'Upload Commercial License',
+    businessTypes: [
+      'With Limited Liability (W.L.L.)',
+      'Sole Proprietorship',
+      'General Partnership',
+      'Joint Venture'
+    ]
+  },
+  'Bahrain': {
+    badge: '🇧🇭 Bahrain Compliance',
+    licenseLabel: 'Ministry of Health / Municipality Food License',
+    licensePlaceholder: 'e.g. Sijilat Commercial Registration or MOH Permit',
+    licenseTypes: [
+      'Ministry of Health Food Hygiene Permit',
+      'Municipality Commercial License (Sijilat)'
+    ],
+    taxName: 'VAT',
+    taxApplicableQuestion: 'VAT (NBR 10%) Applicable?',
+    taxCategoryLabel: 'VAT Category (NBR)',
+    taxCategories: ['Standard Rated (10%)', 'Zero-Rated', 'Exempt'],
+    taxIdLabel: 'VAT Account Number (15 Digits)',
+    taxIdPlaceholder: 'e.g. 200000000000002',
+    taxCertLabel: 'NBR VAT Certificate',
+    taxCertUploadText: 'Upload NBR VAT Certificate',
+    businessTypes: [
+      'With Limited Liability (W.L.L.)',
+      'Individual Establishment',
+      'Bahrain Shareholding Company (BSC)',
+      'Branch of Foreign Company'
+    ]
+  },
+  'United Kingdom': {
+    badge: '🇬🇧 UK Compliance (HMRC & FSA)',
+    licenseLabel: 'Food Business Registration Number',
+    licensePlaceholder: 'Local council food premises registration code',
+    licenseTypes: [
+      'Local Council Food Premises Registration',
+      'Premises License (Licensing Act 2003)',
+      'Food Hygiene Rating Registered'
+    ],
+    taxName: 'VAT',
+    taxApplicableQuestion: 'VAT (HMRC) Applicable?',
+    taxCategoryLabel: 'VAT Category (HMRC)',
+    taxCategories: [
+      'Standard Rate (20%)',
+      'Reduced Rate (5%)',
+      'Flat Rate Scheme for Catering',
+      'Exempt / Below VAT Threshold'
+    ],
+    taxIdLabel: 'VAT Registration Number (VRN)',
+    taxIdPlaceholder: 'e.g. GB 123 4567 89',
+    taxCertLabel: 'HMRC VAT Certificate',
+    taxCertUploadText: 'Upload VAT Certificate (PDF / Image)',
+    businessTypes: [
+      'Private Limited Company (Ltd)',
+      'Sole Trader',
+      'Partnership',
+      'Limited Liability Partnership (LLP)',
+      'Public Limited Company (PLC)'
+    ]
+  },
+  'United States': {
+    badge: '🇺🇸 US Compliance (State Health & IRS)',
+    licenseLabel: 'Health Permit / Food Service License',
+    licensePlaceholder: 'e.g. County Health Dept Food Facility Permit',
+    licenseTypes: [
+      'Retail Food Establishment Permit',
+      'Food Service Sanitation / Health Certificate',
+      'State Food Service License'
+    ],
+    taxName: 'Sales Tax',
+    taxApplicableQuestion: 'Sales Tax & Federal EIN Registered?',
+    taxCategoryLabel: 'Tax Classification',
+    taxCategories: [
+      'State Sales Tax Registered',
+      'Reseller / Food Wholesale',
+      'Exempt Entity'
+    ],
+    taxIdLabel: 'Federal EIN / State Sales Tax ID',
+    taxIdPlaceholder: 'e.g. 12-3456789 (EIN) / State Tax ID',
+    taxCertLabel: 'State Sales Tax Certificate / EIN Letter',
+    taxCertUploadText: 'Upload Tax Permit or Form SS-4 (EIN)',
+    businessTypes: [
+      'Limited Liability Company (LLC)',
+      'C-Corporation',
+      'S-Corporation',
+      'Sole Proprietorship',
+      'General Partnership',
+      'Limited Partnership (LP)'
+    ]
+  },
+  'Default': {
+    badge: '🌐 Regional Legal Compliance',
+    licenseLabel: 'Food Safety License / Commercial Trade License',
+    licensePlaceholder: 'Local authority food hygiene or trade license number',
+    licenseTypes: [
+      'Standard Food Hygiene Permit',
+      'Commercial Trade License',
+      'Municipality Business Permit'
+    ],
+    taxName: 'VAT / Tax',
+    taxApplicableQuestion: 'VAT / Sales Tax Applicable?',
+    taxCategoryLabel: 'Tax Category',
+    taxCategories: [
+      'Standard Rate',
+      'Zero-Rated',
+      'Exempt / Below Threshold'
+    ],
+    taxIdLabel: 'Tax Identification Number (TIN)',
+    taxIdPlaceholder: 'Enter Tax ID / TIN Number',
+    taxCertLabel: 'Tax Registration Certificate',
+    taxCertUploadText: 'Upload Tax Certificate (PDF / Image)',
+    businessTypes: [
+      'Limited Liability Company (LLC)',
+      'Sole Proprietorship',
+      'Partnership',
+      'Corporation / Inc.',
+      'Other Registered Business Entity'
+    ]
+  }
+};
+
+function updateLegalSectionForCountry(countryName) {
+  const config = COUNTRY_LEGAL_CONFIG[countryName] || COUNTRY_LEGAL_CONFIG['Default'];
+  
+  const legalBadge = document.getElementById('legalCountryBadge');
+  if (legalBadge) legalBadge.textContent = config.badge;
+
+  const foodLicenseLabel = document.getElementById('foodLicenseLabel');
+  if (foodLicenseLabel) foodLicenseLabel.innerHTML = `${config.licenseLabel} <span class="req">*</span>`;
+
+  const foodLicenseInput = document.getElementById('foodLicenseInput');
+  if (foodLicenseInput) foodLicenseInput.placeholder = config.licensePlaceholder;
+
+  const licenseTypeSelect = document.getElementById('licenseTypeSelect');
+  if (licenseTypeSelect) {
+    licenseTypeSelect.innerHTML = '<option value="">Select license type</option>';
+    config.licenseTypes.forEach(lt => {
+      const opt = document.createElement('option');
+      opt.value = lt;
+      opt.textContent = lt;
+      licenseTypeSelect.appendChild(opt);
+    });
+    if (config.licenseTypes.length > 0) licenseTypeSelect.selectedIndex = 1;
+  }
+
+  const taxApplicableQuestion = document.getElementById('taxApplicableQuestion');
+  if (taxApplicableQuestion) taxApplicableQuestion.innerHTML = `${config.taxApplicableQuestion} <span class="req">*</span>`;
+
+  const taxCategoryLabel = document.getElementById('taxCategoryLabel');
+  if (taxCategoryLabel) taxCategoryLabel.innerHTML = `${config.taxCategoryLabel} <span class="req">*</span>`;
+
+  const taxCategorySelect = document.getElementById('taxCategorySelect');
+  if (taxCategorySelect) {
+    taxCategorySelect.innerHTML = '<option value="">Select category</option>';
+    config.taxCategories.forEach(tc => {
+      const opt = document.createElement('option');
+      opt.value = tc;
+      opt.textContent = tc;
+      taxCategorySelect.appendChild(opt);
+    });
+    if (config.taxCategories.length > 0) taxCategorySelect.selectedIndex = 1;
+  }
+
+  const taxIdLabel = document.getElementById('taxIdLabel');
+  if (taxIdLabel) taxIdLabel.innerHTML = `${config.taxIdLabel} <span class="req">*</span>`;
+
+  const taxIdInput = document.getElementById('taxIdInput');
+  if (taxIdInput) taxIdInput.placeholder = config.taxIdPlaceholder;
+
+  const taxCertLabel = document.getElementById('taxCertLabel');
+  if (taxCertLabel) taxCertLabel.textContent = config.taxCertLabel;
+
+  const taxCertUploadText = document.getElementById('taxCertUploadText');
+  if (taxCertUploadText) taxCertUploadText.textContent = config.taxCertUploadText;
+
+  const businessTypeSelect = document.getElementById('businessTypeSelect');
+  if (businessTypeSelect) {
+    businessTypeSelect.innerHTML = '<option value="">Select business type</option>';
+    config.businessTypes.forEach(bt => {
+      const opt = document.createElement('option');
+      opt.value = bt;
+      opt.textContent = bt;
+      businessTypeSelect.appendChild(opt);
+    });
+    if (config.businessTypes.length > 0) businessTypeSelect.selectedIndex = 1;
+  }
+}
+
+// Initial Legal & Tax setup for default country
+updateLegalSectionForCountry('India');
 
 /* ==========================================================
    INTERACTIVE GOOGLE MAPS LOCATION PICKER (LEAFLET / API)
@@ -707,7 +1132,7 @@ function validateStep(stepNumber) {
     }
   }
 
-  // Step 2: Country Selection, Store Contact Phone, Manager Password, Service formats
+  // Step 2: Country Selection, Store Email, Store Contact Phone, WhatsApp OTP, Manager Password, Service formats
   if (stepNumber === 2) {
     if (!countrySelect.value) {
       showNotification('Please select the restaurant\'s country first.', 'error');
@@ -715,9 +1140,28 @@ function validateStep(stepNumber) {
       return false;
     }
 
+    const storeEmail = document.getElementById('storeEmail');
+    if (!storeEmail || !storeEmail.value.trim()) {
+      showNotification('Please enter the Restaurant Official Email Address.', 'error');
+      storeEmail?.focus();
+      return false;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(storeEmail.value.trim())) {
+      showNotification('Please enter a valid official email address (e.g. store@restaurant.com).', 'error');
+      storeEmail.focus();
+      return false;
+    }
+
     if (!contactPhoneInput.isValid()) {
       showNotification(`Please enter a valid ${contactPhoneInput.currentCountry.mobileDigits}-digit store manager mobile number for ${contactPhoneInput.currentCountry.name}.`, 'error');
       contactPhoneInput.input.focus();
+      return false;
+    }
+
+    if (!contactPhoneInput.isVerified) {
+      showNotification('Store manager mobile number must be verified with WhatsApp OTP before proceeding.', 'error');
+      contactPhoneInput.handleVerifyClick();
       return false;
     }
 
@@ -841,8 +1285,8 @@ document.querySelectorAll('.toggle').forEach(btn => btn.addEventListener('click'
   btn.textContent = input.type === 'password' ? 'Show' : 'Hide';
 }));
 
-// Upload name preview
-document.querySelectorAll('.upload input').forEach(input => input.addEventListener('change', () => {
+// Upload name preview (for document certificates, excluding logo and cover which use cropper)
+document.querySelectorAll('.upload input:not(#logoFileInput):not(#coverFileInput)').forEach(input => input.addEventListener('change', () => {
   const strong = input.closest('.upload').querySelector('strong');
   strong.textContent = input.files.length ? input.files[0].name : 'Choose file';
 }));
@@ -859,6 +1303,1020 @@ function hideNotification() {
   msg.className = 'message';
   msg.style.display = 'none';
   msg.textContent = '';
+}
+
+/* ==========================================================
+   WHATSAPP OTP VERIFICATION MODAL CONTROLLER
+   ========================================================== */
+const otpModal = document.getElementById('otpModal');
+const closeOtpModalBtn = document.getElementById('closeOtpModalBtn');
+const cancelOtpModalBtn = document.getElementById('cancelOtpModalBtn');
+const verifyOtpBtn = document.getElementById('verifyOtpBtn');
+const otpTargetPhoneDisplay = document.getElementById('otpTargetPhoneDisplay');
+const otpErrorAlert = document.getElementById('otpErrorAlert');
+const otpTimerText = document.getElementById('otpTimerText');
+const otpCountdown = document.getElementById('otpCountdown');
+const resendOtpBtn = document.getElementById('resendOtpBtn');
+const otpBoxes = document.querySelectorAll('.otp-digit-box');
+
+let otpTimerInterval = null;
+let otpSuccessCallback = null;
+
+function openWhatsAppOtpModal(phoneNumber, onVerified) {
+  otpSuccessCallback = onVerified;
+  if (otpTargetPhoneDisplay) {
+    otpTargetPhoneDisplay.textContent = phoneNumber;
+  }
+  if (otpErrorAlert) {
+    otpErrorAlert.style.display = 'none';
+  }
+  
+  // Clear existing inputs
+  otpBoxes.forEach(b => {
+    b.value = '';
+    b.classList.remove('filled');
+  });
+
+  if (otpModal) {
+    otpModal.style.display = 'flex';
+    startOtpCountdown(30);
+    setTimeout(() => {
+      if (otpBoxes[0]) otpBoxes[0].focus();
+    }, 120);
+  }
+}
+
+function closeWhatsAppOtpModal() {
+  if (otpModal) {
+    otpModal.style.display = 'none';
+  }
+  if (otpTimerInterval) {
+    clearInterval(otpTimerInterval);
+    otpTimerInterval = null;
+  }
+}
+
+function startOtpCountdown(seconds) {
+  if (otpTimerInterval) clearInterval(otpTimerInterval);
+  let remaining = seconds;
+  if (otpTimerText) otpTimerText.style.display = 'inline';
+  if (resendOtpBtn) resendOtpBtn.style.display = 'none';
+  if (otpCountdown) otpCountdown.textContent = `${remaining}s`;
+
+  otpTimerInterval = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(otpTimerInterval);
+      otpTimerInterval = null;
+      if (otpTimerText) otpTimerText.style.display = 'none';
+      if (resendOtpBtn) resendOtpBtn.style.display = 'inline';
+    } else {
+      if (otpCountdown) otpCountdown.textContent = `${remaining}s`;
+    }
+  }, 1000);
+}
+
+if (closeOtpModalBtn) closeOtpModalBtn.addEventListener('click', closeWhatsAppOtpModal);
+if (cancelOtpModalBtn) cancelOtpModalBtn.addEventListener('click', closeWhatsAppOtpModal);
+
+if (resendOtpBtn) {
+  resendOtpBtn.addEventListener('click', () => {
+    otpBoxes.forEach(b => {
+      b.value = '';
+      b.classList.remove('filled');
+    });
+    if (otpErrorAlert) otpErrorAlert.style.display = 'none';
+    startOtpCountdown(30);
+    if (otpBoxes[0]) otpBoxes[0].focus();
+    showNotification('A new 6-digit verification code was sent to your WhatsApp.', 'success');
+  });
+}
+
+// Otp digit boxes keyboard handling (paste, backspace, arrow navigation)
+otpBoxes.forEach((box, index) => {
+  box.addEventListener('input', (e) => {
+    const val = e.target.value.replace(/\D/g, '');
+    box.value = val ? val[val.length - 1] : '';
+    if (box.value) {
+      box.classList.add('filled');
+      if (index < otpBoxes.length - 1) {
+        otpBoxes[index + 1].focus();
+      }
+    } else {
+      box.classList.remove('filled');
+    }
+    if (otpErrorAlert) otpErrorAlert.style.display = 'none';
+  });
+
+  box.addEventListener('keydown', (e) => {
+    if (e.key === 'Backspace' && !box.value && index > 0) {
+      otpBoxes[index - 1].focus();
+    } else if (e.key === 'ArrowLeft' && index > 0) {
+      otpBoxes[index - 1].focus();
+    } else if (e.key === 'ArrowRight' && index < otpBoxes.length - 1) {
+      otpBoxes[index + 1].focus();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (verifyOtpBtn) verifyOtpBtn.click();
+    }
+  });
+
+  box.addEventListener('paste', (e) => {
+    e.preventDefault();
+    const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
+    if (!pasted) return;
+    pasted.split('').forEach((digit, i) => {
+      if (otpBoxes[i]) {
+        otpBoxes[i].value = digit;
+        otpBoxes[i].classList.add('filled');
+      }
+    });
+    const nextIdx = Math.min(pasted.length, otpBoxes.length - 1);
+    if (otpBoxes[nextIdx]) otpBoxes[nextIdx].focus();
+    if (otpErrorAlert) otpErrorAlert.style.display = 'none';
+  });
+});
+
+if (verifyOtpBtn) {
+  verifyOtpBtn.addEventListener('click', () => {
+    const enteredCode = Array.from(otpBoxes).map(b => b.value).join('');
+    if (enteredCode.length < 6) {
+      if (otpErrorAlert) {
+        otpErrorAlert.style.display = 'block';
+        otpErrorAlert.textContent = '⚠️ Please enter the complete 6-digit WhatsApp code.';
+      }
+      return;
+    }
+
+    // Any 6-digit code or test code (e.g. 123456) accepted for verification
+    closeWhatsAppOtpModal();
+    if (typeof otpSuccessCallback === 'function') {
+      otpSuccessCallback();
+    }
+    showNotification('🎉 WhatsApp mobile number verified successfully!', 'success');
+  });
+}
+
+/* ==========================================================
+   IMAGE CROPPER CONTROLLER (LOGO 400x400 & COVER 16:6)
+   ========================================================== */
+const cropperModal = document.getElementById('cropperModal');
+const closeCropperModalBtn = document.getElementById('closeCropperModalBtn');
+const cancelCropperBtn = document.getElementById('cancelCropperBtn');
+const applyCropBtn = document.getElementById('applyCropBtn');
+const cropperTitle = document.getElementById('cropperTitle');
+const cropperSubtitle = document.getElementById('cropperSubtitle');
+const cropperCanvasArea = document.getElementById('cropperCanvasArea');
+const cropperTransformContainer = document.getElementById('cropperTransformContainer');
+const cropperSourceImg = document.getElementById('cropperSourceImg');
+const cropMaskRect = document.getElementById('cropMaskRect');
+const cropFrameBox = document.getElementById('cropFrameBox');
+const cropperDimensionsBadge = document.getElementById('cropperDimensionsBadge');
+const cropperZoomSlider = document.getElementById('cropperZoomSlider');
+const zoomInBtn = document.getElementById('zoomInBtn');
+const zoomOutBtn = document.getElementById('zoomOutBtn');
+const zoomResetBtn = document.getElementById('zoomResetBtn');
+
+// Upload fields & preview elements
+const logoFileInput = document.getElementById('logoFileInput');
+const logoUploadBox = document.getElementById('logoUploadBox');
+const logoPreviewCard = document.getElementById('logoPreviewCard');
+const logoPreviewImg = document.getElementById('logoPreviewImg');
+const reCropLogoBtn = document.getElementById('reCropLogoBtn');
+const removeLogoBtn = document.getElementById('removeLogoBtn');
+const croppedLogoData = document.getElementById('croppedLogoData');
+
+const coverFileInput = document.getElementById('coverFileInput');
+const coverUploadBox = document.getElementById('coverUploadBox');
+const coverPreviewCard = document.getElementById('coverPreviewCard');
+const coverPreviewImg = document.getElementById('coverPreviewImg');
+const reCropCoverBtn = document.getElementById('reCropCoverBtn');
+const removeCoverBtn = document.getElementById('removeCoverBtn');
+const croppedCoverData = document.getElementById('croppedCoverData');
+
+let rawLogoDataUrl = null;
+let rawCoverDataUrl = null;
+
+let currentCropMode = null; // 'logo' | 'cover'
+let cropZoom = 1;
+let cropPan = { x: 0, y: 0 };
+let isCropDragging = false;
+let cropDragStart = { x: 0, y: 0 };
+
+const CROP_CONFIGS = {
+  logo: {
+    title: 'Crop Restaurant Logo',
+    subtitle: 'Drag to position and use the zoom slider to frame your logo (400 × 400 px).',
+    aspectRatio: 1, // 1:1 square
+    outputWidth: 400,
+    outputHeight: 400,
+    boxWidth: 240,
+    boxHeight: 240,
+    badgeText: '400 × 400 px (1:1 Square)'
+  },
+  cover: {
+    title: 'Crop Restaurant Cover Image',
+    subtitle: 'Drag to position and zoom to frame your cover banner in 16:6 landscape format.',
+    aspectRatio: 16 / 6, // 2.66667
+    outputWidth: 1600,
+    outputHeight: 600,
+    boxWidth: 360,
+    boxHeight: 135, // 360 / (16/6)
+    badgeText: '16:6 Landscape (1600 × 600 px)'
+  }
+};
+
+function openImageCropper(mode, imageSrc) {
+  currentCropMode = mode;
+  const cfg = CROP_CONFIGS[mode];
+  if (!cfg) return;
+
+  if (cropperTitle) cropperTitle.textContent = cfg.title;
+  if (cropperSubtitle) cropperSubtitle.textContent = cfg.subtitle;
+  if (cropperDimensionsBadge) cropperDimensionsBadge.textContent = cfg.badgeText;
+
+  // Set crop frame box dimensions
+  if (cropFrameBox) {
+    cropFrameBox.style.width = `${cfg.boxWidth}px`;
+    cropFrameBox.style.height = `${cfg.boxHeight}px`;
+    cropFrameBox.style.left = `calc(50% - ${cfg.boxWidth / 2}px)`;
+    cropFrameBox.style.top = `calc(50% - ${cfg.boxHeight / 2}px)`;
+  }
+
+  // Update SVG mask cutout
+  if (cropMaskRect) {
+    cropMaskRect.setAttribute('x', `calc(50% - ${cfg.boxWidth / 2}px)`);
+    cropMaskRect.setAttribute('y', `calc(50% - ${cfg.boxHeight / 2}px)`);
+    cropMaskRect.setAttribute('width', `${cfg.boxWidth}`);
+    cropMaskRect.setAttribute('height', `${cfg.boxHeight}`);
+  }
+
+  // Reset transforms
+  cropZoom = 1;
+  cropPan = { x: 0, y: 0 };
+  if (cropperZoomSlider) cropperZoomSlider.value = 1;
+
+  if (cropperSourceImg) {
+    cropperSourceImg.src = imageSrc;
+    cropperSourceImg.onload = () => {
+      const imgW = cropperSourceImg.naturalWidth;
+      const imgH = cropperSourceImg.naturalHeight;
+      const scale = Math.max(cfg.boxWidth / imgW, cfg.boxHeight / imgH, 1);
+      cropperSourceImg.style.width = `${imgW * (cfg.boxWidth / imgW)}px`;
+      cropperSourceImg.style.height = 'auto';
+      updateCropperTransform();
+    };
+  }
+
+  if (cropperModal) {
+    cropperModal.style.display = 'flex';
+  }
+}
+
+function closeImageCropper() {
+  if (cropperModal) {
+    cropperModal.style.display = 'none';
+  }
+}
+
+function updateCropperTransform() {
+  if (cropperTransformContainer) {
+    cropperTransformContainer.style.transform = `translate(${cropPan.x}px, ${cropPan.y}px) scale(${cropZoom})`;
+  }
+}
+
+// Mouse dragging handlers
+if (cropperCanvasArea) {
+  cropperCanvasArea.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    isCropDragging = true;
+    cropperCanvasArea.classList.add('dragging');
+    cropDragStart = { x: e.clientX - cropPan.x, y: e.clientY - cropPan.y };
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isCropDragging) return;
+    cropPan = {
+      x: e.clientX - cropDragStart.x,
+      y: e.clientY - cropDragStart.y
+    };
+    updateCropperTransform();
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (isCropDragging) {
+      isCropDragging = false;
+      cropperCanvasArea.classList.remove('dragging');
+    }
+  });
+
+  // Touch drag handlers
+  cropperCanvasArea.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      const t = e.touches[0];
+      isCropDragging = true;
+      cropDragStart = { x: t.clientX - cropPan.x, y: t.clientY - cropPan.y };
+    }
+  });
+
+  cropperCanvasArea.addEventListener('touchmove', (e) => {
+    if (!isCropDragging || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    cropPan = {
+      x: t.clientX - cropDragStart.x,
+      y: t.clientY - cropDragStart.y
+    };
+    updateCropperTransform();
+  });
+
+  cropperCanvasArea.addEventListener('touchend', () => {
+    isCropDragging = false;
+  });
+
+  // Wheel zoom
+  cropperCanvasArea.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const delta = e.deltaY < 0 ? 0.08 : -0.08;
+    cropZoom = Math.min(Math.max(0.5, cropZoom + delta), 3.5);
+    if (cropperZoomSlider) cropperZoomSlider.value = cropZoom;
+    updateCropperTransform();
+  });
+}
+
+// Zoom range and buttons
+if (cropperZoomSlider) {
+  cropperZoomSlider.addEventListener('input', () => {
+    cropZoom = parseFloat(cropperZoomSlider.value);
+    updateCropperTransform();
+  });
+}
+
+if (zoomInBtn) {
+  zoomInBtn.addEventListener('click', () => {
+    cropZoom = Math.min(3.5, cropZoom + 0.15);
+    if (cropperZoomSlider) cropperZoomSlider.value = cropZoom;
+    updateCropperTransform();
+  });
+}
+
+if (zoomOutBtn) {
+  zoomOutBtn.addEventListener('click', () => {
+    cropZoom = Math.max(0.5, cropZoom - 0.15);
+    if (cropperZoomSlider) cropperZoomSlider.value = cropZoom;
+    updateCropperTransform();
+  });
+}
+
+if (zoomResetBtn) {
+  zoomResetBtn.addEventListener('click', () => {
+    cropZoom = 1;
+    cropPan = { x: 0, y: 0 };
+    if (cropperZoomSlider) cropperZoomSlider.value = 1;
+    updateCropperTransform();
+  });
+}
+
+if (closeCropperModalBtn) closeCropperModalBtn.addEventListener('click', closeImageCropper);
+if (cancelCropperBtn) cancelCropperBtn.addEventListener('click', closeImageCropper);
+
+// Perform HTML5 Canvas Crop
+if (applyCropBtn) {
+  applyCropBtn.addEventListener('click', () => {
+    const cfg = CROP_CONFIGS[currentCropMode];
+    if (!cfg || !cropperSourceImg || !cropperSourceImg.src) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = cfg.outputWidth;
+    canvas.height = cfg.outputHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const naturalW = cropperSourceImg.naturalWidth || cfg.outputWidth;
+    const naturalH = cropperSourceImg.naturalHeight || cfg.outputHeight;
+    const displayedW = cropperSourceImg.offsetWidth || cfg.boxWidth;
+    const displayedH = cropperSourceImg.offsetHeight || cfg.boxHeight;
+
+    const scaleX = naturalW / displayedW;
+    const scaleY = naturalH / displayedH;
+
+    const safeZoom = Math.max(0.1, cropZoom);
+    const cropCenterX = displayedW / 2 - (cropPan.x / safeZoom);
+    const cropCenterY = displayedH / 2 - (cropPan.y / safeZoom);
+
+    const sourceCropW = (cfg.boxWidth / safeZoom) * scaleX;
+    const sourceCropH = (cfg.boxHeight / safeZoom) * scaleY;
+
+    const sourceCropX = (cropCenterX - (cfg.boxWidth / (2 * safeZoom))) * scaleX;
+    const sourceCropY = (cropCenterY - (cfg.boxHeight / (2 * safeZoom))) * scaleY;
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    ctx.drawImage(
+      cropperSourceImg,
+      sourceCropX,
+      sourceCropY,
+      sourceCropW,
+      sourceCropH,
+      0,
+      0,
+      cfg.outputWidth,
+      cfg.outputHeight
+    );
+
+    const croppedResult = canvas.toDataURL('image/png', 0.95);
+
+    if (currentCropMode === 'logo') {
+      if (croppedLogoData) croppedLogoData.value = croppedResult;
+      if (logoPreviewImg) logoPreviewImg.src = croppedResult;
+      if (logoUploadBox) logoUploadBox.style.display = 'none';
+      if (logoPreviewCard) logoPreviewCard.style.display = 'flex';
+      showNotification('Restaurant Logo cropped to 400 × 400 px successfully!', 'success');
+    } else if (currentCropMode === 'cover') {
+      if (croppedCoverData) croppedCoverData.value = croppedResult;
+      if (coverPreviewImg) coverPreviewImg.src = croppedResult;
+      if (coverUploadBox) coverUploadBox.style.display = 'none';
+      if (coverPreviewCard) coverPreviewCard.style.display = 'flex';
+      showNotification('Restaurant Cover cropped to landscape (16:6) successfully!', 'success');
+    }
+
+    closeImageCropper();
+  });
+}
+
+// File input change handlers
+if (logoFileInput) {
+  logoFileInput.addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      rawLogoDataUrl = evt.target.result;
+      openImageCropper('logo', rawLogoDataUrl);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+if (coverFileInput) {
+  coverFileInput.addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      rawCoverDataUrl = evt.target.result;
+      openImageCropper('cover', rawCoverDataUrl);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// Re-crop buttons
+if (reCropLogoBtn) {
+  reCropLogoBtn.addEventListener('click', () => {
+    if (rawLogoDataUrl) {
+      openImageCropper('logo', rawLogoDataUrl);
+    } else if (logoFileInput) {
+      logoFileInput.click();
+    }
+  });
+}
+
+if (removeLogoBtn) {
+  removeLogoBtn.addEventListener('click', () => {
+    if (logoFileInput) logoFileInput.value = '';
+    if (croppedLogoData) croppedLogoData.value = '';
+    rawLogoDataUrl = null;
+    if (logoPreviewCard) logoPreviewCard.style.display = 'none';
+    if (logoUploadBox) logoUploadBox.style.display = 'flex';
+  });
+}
+
+if (reCropCoverBtn) {
+  reCropCoverBtn.addEventListener('click', () => {
+    if (rawCoverDataUrl) {
+      openImageCropper('cover', rawCoverDataUrl);
+    } else if (coverFileInput) {
+      coverFileInput.click();
+    }
+  });
+}
+
+if (removeCoverBtn) {
+  removeCoverBtn.addEventListener('click', () => {
+    if (coverFileInput) coverFileInput.value = '';
+    if (croppedCoverData) croppedCoverData.value = '';
+    rawCoverDataUrl = null;
+    if (coverPreviewCard) coverPreviewCard.style.display = 'none';
+    if (coverUploadBox) coverUploadBox.style.display = 'flex';
+  });
+}
+
+/* ==========================================================
+   WHATSAPP OTP VERIFICATION MODAL CONTROLLER
+   ========================================================== */
+const otpModal = document.getElementById('otpModal');
+const closeOtpModalBtn = document.getElementById('closeOtpModalBtn');
+const cancelOtpModalBtn = document.getElementById('cancelOtpModalBtn');
+const verifyOtpBtn = document.getElementById('verifyOtpBtn');
+const otpTargetPhoneDisplay = document.getElementById('otpTargetPhoneDisplay');
+const otpErrorAlert = document.getElementById('otpErrorAlert');
+const otpTimerText = document.getElementById('otpTimerText');
+const otpCountdown = document.getElementById('otpCountdown');
+const resendOtpBtn = document.getElementById('resendOtpBtn');
+const otpBoxes = document.querySelectorAll('.otp-digit-box');
+
+let otpTimerInterval = null;
+let otpSuccessCallback = null;
+
+function openWhatsAppOtpModal(phoneNumber, onVerified) {
+  otpSuccessCallback = onVerified;
+  if (otpTargetPhoneDisplay) {
+    otpTargetPhoneDisplay.textContent = phoneNumber;
+  }
+  if (otpErrorAlert) {
+    otpErrorAlert.style.display = 'none';
+  }
+  
+  // Clear existing inputs
+  otpBoxes.forEach(b => {
+    b.value = '';
+    b.classList.remove('filled');
+  });
+
+  if (otpModal) {
+    otpModal.style.display = 'flex';
+    startOtpCountdown(30);
+    setTimeout(() => {
+      if (otpBoxes[0]) otpBoxes[0].focus();
+    }, 120);
+  }
+}
+
+function closeWhatsAppOtpModal() {
+  if (otpModal) {
+    otpModal.style.display = 'none';
+  }
+  if (otpTimerInterval) {
+    clearInterval(otpTimerInterval);
+    otpTimerInterval = null;
+  }
+}
+
+function startOtpCountdown(seconds) {
+  if (otpTimerInterval) clearInterval(otpTimerInterval);
+  let remaining = seconds;
+  if (otpTimerText) otpTimerText.style.display = 'inline';
+  if (resendOtpBtn) resendOtpBtn.style.display = 'none';
+  if (otpCountdown) otpCountdown.textContent = `${remaining}s`;
+
+  otpTimerInterval = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(otpTimerInterval);
+      otpTimerInterval = null;
+      if (otpTimerText) otpTimerText.style.display = 'none';
+      if (resendOtpBtn) resendOtpBtn.style.display = 'inline';
+    } else {
+      if (otpCountdown) otpCountdown.textContent = `${remaining}s`;
+    }
+  }, 1000);
+}
+
+if (closeOtpModalBtn) closeOtpModalBtn.addEventListener('click', closeWhatsAppOtpModal);
+if (cancelOtpModalBtn) cancelOtpModalBtn.addEventListener('click', closeWhatsAppOtpModal);
+
+if (resendOtpBtn) {
+  resendOtpBtn.addEventListener('click', () => {
+    otpBoxes.forEach(b => {
+      b.value = '';
+      b.classList.remove('filled');
+    });
+    if (otpErrorAlert) otpErrorAlert.style.display = 'none';
+    startOtpCountdown(30);
+    if (otpBoxes[0]) otpBoxes[0].focus();
+    showNotification('A new 6-digit verification code was sent to your WhatsApp.', 'success');
+  });
+}
+
+// Otp digit boxes keyboard handling (paste, backspace, arrow navigation)
+otpBoxes.forEach((box, index) => {
+  box.addEventListener('input', (e) => {
+    const val = e.target.value.replace(/\D/g, '');
+    box.value = val ? val[val.length - 1] : '';
+    if (box.value) {
+      box.classList.add('filled');
+      if (index < otpBoxes.length - 1) {
+        otpBoxes[index + 1].focus();
+      }
+    } else {
+      box.classList.remove('filled');
+    }
+    if (otpErrorAlert) otpErrorAlert.style.display = 'none';
+  });
+
+  box.addEventListener('keydown', (e) => {
+    if (e.key === 'Backspace' && !box.value && index > 0) {
+      otpBoxes[index - 1].focus();
+    } else if (e.key === 'ArrowLeft' && index > 0) {
+      otpBoxes[index - 1].focus();
+    } else if (e.key === 'ArrowRight' && index < otpBoxes.length - 1) {
+      otpBoxes[index + 1].focus();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (verifyOtpBtn) verifyOtpBtn.click();
+    }
+  });
+
+  box.addEventListener('paste', (e) => {
+    e.preventDefault();
+    const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
+    if (!pasted) return;
+    pasted.split('').forEach((digit, i) => {
+      if (otpBoxes[i]) {
+        otpBoxes[i].value = digit;
+        otpBoxes[i].classList.add('filled');
+      }
+    });
+    const nextIdx = Math.min(pasted.length, otpBoxes.length - 1);
+    if (otpBoxes[nextIdx]) otpBoxes[nextIdx].focus();
+    if (otpErrorAlert) otpErrorAlert.style.display = 'none';
+  });
+});
+
+if (verifyOtpBtn) {
+  verifyOtpBtn.addEventListener('click', () => {
+    const enteredCode = Array.from(otpBoxes).map(b => b.value).join('');
+    if (enteredCode.length < 6) {
+      if (otpErrorAlert) {
+        otpErrorAlert.style.display = 'block';
+        otpErrorAlert.textContent = '⚠️ Please enter the complete 6-digit WhatsApp code.';
+      }
+      return;
+    }
+
+    // Any 6-digit code or test code (e.g. 123456) accepted for verification
+    closeWhatsAppOtpModal();
+    if (typeof otpSuccessCallback === 'function') {
+      otpSuccessCallback();
+    }
+    showNotification('🎉 WhatsApp mobile number verified successfully!', 'success');
+  });
+}
+
+/* ==========================================================
+   IMAGE CROPPER CONTROLLER (LOGO 400x400 & COVER 16:6)
+   ========================================================== */
+const cropperModal = document.getElementById('cropperModal');
+const closeCropperModalBtn = document.getElementById('closeCropperModalBtn');
+const cancelCropperBtn = document.getElementById('cancelCropperBtn');
+const applyCropBtn = document.getElementById('applyCropBtn');
+const cropperTitle = document.getElementById('cropperTitle');
+const cropperSubtitle = document.getElementById('cropperSubtitle');
+const cropperCanvasArea = document.getElementById('cropperCanvasArea');
+const cropperTransformContainer = document.getElementById('cropperTransformContainer');
+const cropperSourceImg = document.getElementById('cropperSourceImg');
+const cropMaskRect = document.getElementById('cropMaskRect');
+const cropFrameBox = document.getElementById('cropFrameBox');
+const cropperDimensionsBadge = document.getElementById('cropperDimensionsBadge');
+const cropperZoomSlider = document.getElementById('cropperZoomSlider');
+const zoomInBtn = document.getElementById('zoomInBtn');
+const zoomOutBtn = document.getElementById('zoomOutBtn');
+const zoomResetBtn = document.getElementById('zoomResetBtn');
+
+// Upload fields & preview elements
+const logoFileInput = document.getElementById('logoFileInput');
+const logoUploadBox = document.getElementById('logoUploadBox');
+const logoPreviewCard = document.getElementById('logoPreviewCard');
+const logoPreviewImg = document.getElementById('logoPreviewImg');
+const reCropLogoBtn = document.getElementById('reCropLogoBtn');
+const removeLogoBtn = document.getElementById('removeLogoBtn');
+const croppedLogoData = document.getElementById('croppedLogoData');
+
+const coverFileInput = document.getElementById('coverFileInput');
+const coverUploadBox = document.getElementById('coverUploadBox');
+const coverPreviewCard = document.getElementById('coverPreviewCard');
+const coverPreviewImg = document.getElementById('coverPreviewImg');
+const reCropCoverBtn = document.getElementById('reCropCoverBtn');
+const removeCoverBtn = document.getElementById('removeCoverBtn');
+const croppedCoverData = document.getElementById('croppedCoverData');
+
+let rawLogoDataUrl = null;
+let rawCoverDataUrl = null;
+
+let currentCropMode = null; // 'logo' | 'cover'
+let cropZoom = 1;
+let cropPan = { x: 0, y: 0 };
+let isCropDragging = false;
+let cropDragStart = { x: 0, y: 0 };
+
+const CROP_CONFIGS = {
+  logo: {
+    title: 'Crop Restaurant Logo',
+    subtitle: 'Drag to position and use the zoom slider to frame your logo (400 × 400 px).',
+    aspectRatio: 1, // 1:1 square
+    outputWidth: 400,
+    outputHeight: 400,
+    boxWidth: 240,
+    boxHeight: 240,
+    badgeText: '400 × 400 px (1:1 Square)'
+  },
+  cover: {
+    title: 'Crop Restaurant Cover Image',
+    subtitle: 'Drag to position and zoom to frame your cover banner in 16:6 landscape format.',
+    aspectRatio: 16 / 6, // 2.66667
+    outputWidth: 1600,
+    outputHeight: 600,
+    boxWidth: 360,
+    boxHeight: 135, // 360 / (16/6)
+    badgeText: '16:6 Landscape (1600 × 600 px)'
+  }
+};
+
+function openImageCropper(mode, imageSrc) {
+  currentCropMode = mode;
+  const cfg = CROP_CONFIGS[mode];
+  if (!cfg) return;
+
+  if (cropperTitle) cropperTitle.textContent = cfg.title;
+  if (cropperSubtitle) cropperSubtitle.textContent = cfg.subtitle;
+  if (cropperDimensionsBadge) cropperDimensionsBadge.textContent = cfg.badgeText;
+
+  // Set crop frame box dimensions
+  if (cropFrameBox) {
+    cropFrameBox.style.width = `${cfg.boxWidth}px`;
+    cropFrameBox.style.height = `${cfg.boxHeight}px`;
+    cropFrameBox.style.left = `calc(50% - ${cfg.boxWidth / 2}px)`;
+    cropFrameBox.style.top = `calc(50% - ${cfg.boxHeight / 2}px)`;
+  }
+
+  // Update SVG mask cutout
+  if (cropMaskRect) {
+    cropMaskRect.setAttribute('x', `calc(50% - ${cfg.boxWidth / 2}px)`);
+    cropMaskRect.setAttribute('y', `calc(50% - ${cfg.boxHeight / 2}px)`);
+    cropMaskRect.setAttribute('width', `${cfg.boxWidth}`);
+    cropMaskRect.setAttribute('height', `${cfg.boxHeight}`);
+  }
+
+  // Reset transforms
+  cropZoom = 1;
+  cropPan = { x: 0, y: 0 };
+  if (cropperZoomSlider) cropperZoomSlider.value = 1;
+
+  if (cropperSourceImg) {
+    cropperSourceImg.src = imageSrc;
+    cropperSourceImg.onload = () => {
+      const imgW = cropperSourceImg.naturalWidth;
+      const imgH = cropperSourceImg.naturalHeight;
+      const scale = Math.max(cfg.boxWidth / imgW, cfg.boxHeight / imgH, 1);
+      cropperSourceImg.style.width = `${imgW * (cfg.boxWidth / imgW)}px`;
+      cropperSourceImg.style.height = 'auto';
+      updateCropperTransform();
+    };
+  }
+
+  if (cropperModal) {
+    cropperModal.style.display = 'flex';
+  }
+}
+
+function closeImageCropper() {
+  if (cropperModal) {
+    cropperModal.style.display = 'none';
+  }
+}
+
+function updateCropperTransform() {
+  if (cropperTransformContainer) {
+    cropperTransformContainer.style.transform = `translate(${cropPan.x}px, ${cropPan.y}px) scale(${cropZoom})`;
+  }
+}
+
+// Mouse dragging handlers
+if (cropperCanvasArea) {
+  cropperCanvasArea.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    isCropDragging = true;
+    cropperCanvasArea.classList.add('dragging');
+    cropDragStart = { x: e.clientX - cropPan.x, y: e.clientY - cropPan.y };
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isCropDragging) return;
+    cropPan = {
+      x: e.clientX - cropDragStart.x,
+      y: e.clientY - cropDragStart.y
+    };
+    updateCropperTransform();
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (isCropDragging) {
+      isCropDragging = false;
+      cropperCanvasArea.classList.remove('dragging');
+    }
+  });
+
+  // Touch drag handlers
+  cropperCanvasArea.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      const t = e.touches[0];
+      isCropDragging = true;
+      cropDragStart = { x: t.clientX - cropPan.x, y: t.clientY - cropPan.y };
+    }
+  });
+
+  cropperCanvasArea.addEventListener('touchmove', (e) => {
+    if (!isCropDragging || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    cropPan = {
+      x: t.clientX - cropDragStart.x,
+      y: t.clientY - cropDragStart.y
+    };
+    updateCropperTransform();
+  });
+
+  cropperCanvasArea.addEventListener('touchend', () => {
+    isCropDragging = false;
+  });
+
+  // Wheel zoom
+  cropperCanvasArea.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const delta = e.deltaY < 0 ? 0.08 : -0.08;
+    cropZoom = Math.min(Math.max(0.5, cropZoom + delta), 3.5);
+    if (cropperZoomSlider) cropperZoomSlider.value = cropZoom;
+    updateCropperTransform();
+  });
+}
+
+// Zoom range and buttons
+if (cropperZoomSlider) {
+  cropperZoomSlider.addEventListener('input', () => {
+    cropZoom = parseFloat(cropperZoomSlider.value);
+    updateCropperTransform();
+  });
+}
+
+if (zoomInBtn) {
+  zoomInBtn.addEventListener('click', () => {
+    cropZoom = Math.min(3.5, cropZoom + 0.15);
+    if (cropperZoomSlider) cropperZoomSlider.value = cropZoom;
+    updateCropperTransform();
+  });
+}
+
+if (zoomOutBtn) {
+  zoomOutBtn.addEventListener('click', () => {
+    cropZoom = Math.max(0.5, cropZoom - 0.15);
+    if (cropperZoomSlider) cropperZoomSlider.value = cropZoom;
+    updateCropperTransform();
+  });
+}
+
+if (zoomResetBtn) {
+  zoomResetBtn.addEventListener('click', () => {
+    cropZoom = 1;
+    cropPan = { x: 0, y: 0 };
+    if (cropperZoomSlider) cropperZoomSlider.value = 1;
+    updateCropperTransform();
+  });
+}
+
+if (closeCropperModalBtn) closeCropperModalBtn.addEventListener('click', closeImageCropper);
+if (cancelCropperBtn) cancelCropperBtn.addEventListener('click', closeImageCropper);
+
+// Perform HTML5 Canvas Crop
+if (applyCropBtn) {
+  applyCropBtn.addEventListener('click', () => {
+    const cfg = CROP_CONFIGS[currentCropMode];
+    if (!cfg || !cropperSourceImg || !cropperSourceImg.src) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = cfg.outputWidth;
+    canvas.height = cfg.outputHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const naturalW = cropperSourceImg.naturalWidth || cfg.outputWidth;
+    const naturalH = cropperSourceImg.naturalHeight || cfg.outputHeight;
+    const displayedW = cropperSourceImg.offsetWidth || cfg.boxWidth;
+    const displayedH = cropperSourceImg.offsetHeight || cfg.boxHeight;
+
+    const scaleX = naturalW / displayedW;
+    const scaleY = naturalH / displayedH;
+
+    const safeZoom = Math.max(0.1, cropZoom);
+    const cropCenterX = displayedW / 2 - (cropPan.x / safeZoom);
+    const cropCenterY = displayedH / 2 - (cropPan.y / safeZoom);
+
+    const sourceCropW = (cfg.boxWidth / safeZoom) * scaleX;
+    const sourceCropH = (cfg.boxHeight / safeZoom) * scaleY;
+
+    const sourceCropX = (cropCenterX - (cfg.boxWidth / (2 * safeZoom))) * scaleX;
+    const sourceCropY = (cropCenterY - (cfg.boxHeight / (2 * safeZoom))) * scaleY;
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    ctx.drawImage(
+      cropperSourceImg,
+      sourceCropX,
+      sourceCropY,
+      sourceCropW,
+      sourceCropH,
+      0,
+      0,
+      cfg.outputWidth,
+      cfg.outputHeight
+    );
+
+    const croppedResult = canvas.toDataURL('image/png', 0.95);
+
+    if (currentCropMode === 'logo') {
+      if (croppedLogoData) croppedLogoData.value = croppedResult;
+      if (logoPreviewImg) logoPreviewImg.src = croppedResult;
+      if (logoUploadBox) logoUploadBox.style.display = 'none';
+      if (logoPreviewCard) logoPreviewCard.style.display = 'flex';
+      showNotification('Restaurant Logo cropped to 400 × 400 px successfully!', 'success');
+    } else if (currentCropMode === 'cover') {
+      if (croppedCoverData) croppedCoverData.value = croppedResult;
+      if (coverPreviewImg) coverPreviewImg.src = croppedResult;
+      if (coverUploadBox) coverUploadBox.style.display = 'none';
+      if (coverPreviewCard) coverPreviewCard.style.display = 'flex';
+      showNotification('Restaurant Cover cropped to landscape (16:6) successfully!', 'success');
+    }
+
+    closeImageCropper();
+  });
+}
+
+// File input change handlers
+if (logoFileInput) {
+  logoFileInput.addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      rawLogoDataUrl = evt.target.result;
+      openImageCropper('logo', rawLogoDataUrl);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+if (coverFileInput) {
+  coverFileInput.addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      rawCoverDataUrl = evt.target.result;
+      openImageCropper('cover', rawCoverDataUrl);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// Re-crop buttons
+if (reCropLogoBtn) {
+  reCropLogoBtn.addEventListener('click', () => {
+    if (rawLogoDataUrl) {
+      openImageCropper('logo', rawLogoDataUrl);
+    } else if (logoFileInput) {
+      logoFileInput.click();
+    }
+  });
+}
+
+if (removeLogoBtn) {
+  removeLogoBtn.addEventListener('click', () => {
+    if (logoFileInput) logoFileInput.value = '';
+    if (croppedLogoData) croppedLogoData.value = '';
+    rawLogoDataUrl = null;
+    if (logoPreviewCard) logoPreviewCard.style.display = 'none';
+    if (logoUploadBox) logoUploadBox.style.display = 'flex';
+  });
+}
+
+if (reCropCoverBtn) {
+  reCropCoverBtn.addEventListener('click', () => {
+    if (rawCoverDataUrl) {
+      openImageCropper('cover', rawCoverDataUrl);
+    } else if (coverFileInput) {
+      coverFileInput.click();
+    }
+  });
+}
+
+if (removeCoverBtn) {
+  removeCoverBtn.addEventListener('click', () => {
+    if (coverFileInput) coverFileInput.value = '';
+    if (croppedCoverData) croppedCoverData.value = '';
+    rawCoverDataUrl = null;
+    if (coverPreviewCard) coverPreviewCard.style.display = 'none';
+    if (coverUploadBox) coverUploadBox.style.display = 'flex';
+  });
 }
 
 // Final Submit
