@@ -173,7 +173,7 @@ class PhoneCountryInputComponent {
   resolveCountry(query) {
     if (!query) return COUNTRIES_PHONE_DATA[0];
     const q = query.toLowerCase().trim();
-    return COUNTRIES_PHONE_DATA.find(c => 
+    return COUNTRIES_PHONE_DATA.find(c =>
       c.code.toLowerCase() === q ||
       c.name.toLowerCase() === q ||
       c.dialCode === q
@@ -294,7 +294,7 @@ class PhoneCountryInputComponent {
       if (this.isVerified && this.getFullNumber() !== this.verifiedPhoneNumber) {
         this.setVerified(false);
       }
-      
+
       // Sync with Step 4 manager display
       updateSyncedManagerNumber();
     });
@@ -353,7 +353,7 @@ class PhoneCountryInputComponent {
   openDropdown() {
     document.querySelectorAll('.phone-popover').forEach(p => p.style.display = 'none');
     document.querySelectorAll('.phone-trigger-arrow').forEach(a => a.classList.remove('open'));
-    
+
     this.dropdownOpen = true;
     this.popover.style.display = 'flex';
     this.arrow.classList.add('open');
@@ -370,7 +370,7 @@ class PhoneCountryInputComponent {
   }
 
   renderCountryList() {
-    const filtered = COUNTRIES_PHONE_DATA.filter(c => 
+    const filtered = COUNTRIES_PHONE_DATA.filter(c =>
       c.name.toLowerCase().includes(this.searchQuery) ||
       c.code.toLowerCase().includes(this.searchQuery) ||
       c.dialCode.includes(this.searchQuery)
@@ -429,7 +429,7 @@ class PhoneCountryInputComponent {
     }
 
     this.hint.innerHTML = `Standard format for <strong>${countryObj.name}</strong> (${countryObj.mobileDigits} digits)`;
-    
+
     // Invalidate verification if country changes
     if (this.isVerified) {
       this.setVerified(false);
@@ -542,7 +542,7 @@ function applyCountrySelection(countryValue) {
     }
   });
 
-  const matchedCountry = COUNTRIES_PHONE_DATA.find(c => 
+  const matchedCountry = COUNTRIES_PHONE_DATA.find(c =>
     c.name.toLowerCase() === countryValue.toLowerCase() ||
     c.code.toLowerCase() === countryValue.toLowerCase()
   );
@@ -929,7 +929,7 @@ const COUNTRY_LEGAL_CONFIG = {
 
 function updateLegalSectionForCountry(countryName) {
   const config = COUNTRY_LEGAL_CONFIG[countryName] || COUNTRY_LEGAL_CONFIG['Default'];
-  
+
   const legalBadge = document.getElementById('legalCountryBadge');
   if (legalBadge) legalBadge.textContent = config.badge;
 
@@ -1025,7 +1025,7 @@ function initLeafletMap(centerLat, centerLng, zoomLevel) {
       attribution: '© OpenStreetMap contributors | Google Maps Pin Generator'
     }).addTo(leafletMap);
 
-    leafletMap.on('click', function(e) {
+    leafletMap.on('click', function (e) {
       setPinLocation(e.latlng.lat, e.latlng.lng);
     });
   } else {
@@ -1038,7 +1038,7 @@ function setPinLocation(lat, lng, label) {
   currentCoords = { lat: lat.toFixed(6), lng: lng.toFixed(6) };
   if (!mapMarker) {
     mapMarker = L.marker([lat, lng], { draggable: true }).addTo(leafletMap);
-    mapMarker.on('dragend', function(e) {
+    mapMarker.on('dragend', function (e) {
       const pos = e.target.getLatLng();
       setPinLocation(pos.lat, pos.lng);
     });
@@ -1330,514 +1330,7 @@ function openWhatsAppOtpModal(phoneNumber, onVerified) {
   if (otpErrorAlert) {
     otpErrorAlert.style.display = 'none';
   }
-  
-  // Clear existing inputs
-  otpBoxes.forEach(b => {
-    b.value = '';
-    b.classList.remove('filled');
-  });
 
-  if (otpModal) {
-    otpModal.style.display = 'flex';
-    startOtpCountdown(30);
-    setTimeout(() => {
-      if (otpBoxes[0]) otpBoxes[0].focus();
-    }, 120);
-  }
-}
-
-function closeWhatsAppOtpModal() {
-  if (otpModal) {
-    otpModal.style.display = 'none';
-  }
-  if (otpTimerInterval) {
-    clearInterval(otpTimerInterval);
-    otpTimerInterval = null;
-  }
-}
-
-function startOtpCountdown(seconds) {
-  if (otpTimerInterval) clearInterval(otpTimerInterval);
-  let remaining = seconds;
-  if (otpTimerText) otpTimerText.style.display = 'inline';
-  if (resendOtpBtn) resendOtpBtn.style.display = 'none';
-  if (otpCountdown) otpCountdown.textContent = `${remaining}s`;
-
-  otpTimerInterval = setInterval(() => {
-    remaining--;
-    if (remaining <= 0) {
-      clearInterval(otpTimerInterval);
-      otpTimerInterval = null;
-      if (otpTimerText) otpTimerText.style.display = 'none';
-      if (resendOtpBtn) resendOtpBtn.style.display = 'inline';
-    } else {
-      if (otpCountdown) otpCountdown.textContent = `${remaining}s`;
-    }
-  }, 1000);
-}
-
-if (closeOtpModalBtn) closeOtpModalBtn.addEventListener('click', closeWhatsAppOtpModal);
-if (cancelOtpModalBtn) cancelOtpModalBtn.addEventListener('click', closeWhatsAppOtpModal);
-
-if (resendOtpBtn) {
-  resendOtpBtn.addEventListener('click', () => {
-    otpBoxes.forEach(b => {
-      b.value = '';
-      b.classList.remove('filled');
-    });
-    if (otpErrorAlert) otpErrorAlert.style.display = 'none';
-    startOtpCountdown(30);
-    if (otpBoxes[0]) otpBoxes[0].focus();
-    showNotification('A new 6-digit verification code was sent to your WhatsApp.', 'success');
-  });
-}
-
-// Otp digit boxes keyboard handling (paste, backspace, arrow navigation)
-otpBoxes.forEach((box, index) => {
-  box.addEventListener('input', (e) => {
-    const val = e.target.value.replace(/\D/g, '');
-    box.value = val ? val[val.length - 1] : '';
-    if (box.value) {
-      box.classList.add('filled');
-      if (index < otpBoxes.length - 1) {
-        otpBoxes[index + 1].focus();
-      }
-    } else {
-      box.classList.remove('filled');
-    }
-    if (otpErrorAlert) otpErrorAlert.style.display = 'none';
-  });
-
-  box.addEventListener('keydown', (e) => {
-    if (e.key === 'Backspace' && !box.value && index > 0) {
-      otpBoxes[index - 1].focus();
-    } else if (e.key === 'ArrowLeft' && index > 0) {
-      otpBoxes[index - 1].focus();
-    } else if (e.key === 'ArrowRight' && index < otpBoxes.length - 1) {
-      otpBoxes[index + 1].focus();
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      if (verifyOtpBtn) verifyOtpBtn.click();
-    }
-  });
-
-  box.addEventListener('paste', (e) => {
-    e.preventDefault();
-    const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
-    if (!pasted) return;
-    pasted.split('').forEach((digit, i) => {
-      if (otpBoxes[i]) {
-        otpBoxes[i].value = digit;
-        otpBoxes[i].classList.add('filled');
-      }
-    });
-    const nextIdx = Math.min(pasted.length, otpBoxes.length - 1);
-    if (otpBoxes[nextIdx]) otpBoxes[nextIdx].focus();
-    if (otpErrorAlert) otpErrorAlert.style.display = 'none';
-  });
-});
-
-if (verifyOtpBtn) {
-  verifyOtpBtn.addEventListener('click', () => {
-    const enteredCode = Array.from(otpBoxes).map(b => b.value).join('');
-    if (enteredCode.length < 6) {
-      if (otpErrorAlert) {
-        otpErrorAlert.style.display = 'block';
-        otpErrorAlert.textContent = '⚠️ Please enter the complete 6-digit WhatsApp code.';
-      }
-      return;
-    }
-
-    // Any 6-digit code or test code (e.g. 123456) accepted for verification
-    closeWhatsAppOtpModal();
-    if (typeof otpSuccessCallback === 'function') {
-      otpSuccessCallback();
-    }
-    showNotification('🎉 WhatsApp mobile number verified successfully!', 'success');
-  });
-}
-
-/* ==========================================================
-   IMAGE CROPPER CONTROLLER (LOGO 400x400 & COVER 16:6)
-   ========================================================== */
-const cropperModal = document.getElementById('cropperModal');
-const closeCropperModalBtn = document.getElementById('closeCropperModalBtn');
-const cancelCropperBtn = document.getElementById('cancelCropperBtn');
-const applyCropBtn = document.getElementById('applyCropBtn');
-const cropperTitle = document.getElementById('cropperTitle');
-const cropperSubtitle = document.getElementById('cropperSubtitle');
-const cropperCanvasArea = document.getElementById('cropperCanvasArea');
-const cropperTransformContainer = document.getElementById('cropperTransformContainer');
-const cropperSourceImg = document.getElementById('cropperSourceImg');
-const cropMaskRect = document.getElementById('cropMaskRect');
-const cropFrameBox = document.getElementById('cropFrameBox');
-const cropperDimensionsBadge = document.getElementById('cropperDimensionsBadge');
-const cropperZoomSlider = document.getElementById('cropperZoomSlider');
-const zoomInBtn = document.getElementById('zoomInBtn');
-const zoomOutBtn = document.getElementById('zoomOutBtn');
-const zoomResetBtn = document.getElementById('zoomResetBtn');
-
-// Upload fields & preview elements
-const logoFileInput = document.getElementById('logoFileInput');
-const logoUploadBox = document.getElementById('logoUploadBox');
-const logoPreviewCard = document.getElementById('logoPreviewCard');
-const logoPreviewImg = document.getElementById('logoPreviewImg');
-const reCropLogoBtn = document.getElementById('reCropLogoBtn');
-const removeLogoBtn = document.getElementById('removeLogoBtn');
-const croppedLogoData = document.getElementById('croppedLogoData');
-
-const coverFileInput = document.getElementById('coverFileInput');
-const coverUploadBox = document.getElementById('coverUploadBox');
-const coverPreviewCard = document.getElementById('coverPreviewCard');
-const coverPreviewImg = document.getElementById('coverPreviewImg');
-const reCropCoverBtn = document.getElementById('reCropCoverBtn');
-const removeCoverBtn = document.getElementById('removeCoverBtn');
-const croppedCoverData = document.getElementById('croppedCoverData');
-
-let rawLogoDataUrl = null;
-let rawCoverDataUrl = null;
-
-let currentCropMode = null; // 'logo' | 'cover'
-let cropZoom = 1;
-let cropPan = { x: 0, y: 0 };
-let isCropDragging = false;
-let cropDragStart = { x: 0, y: 0 };
-
-const CROP_CONFIGS = {
-  logo: {
-    title: 'Crop Restaurant Logo',
-    subtitle: 'Drag to position and use the zoom slider to frame your logo (400 × 400 px).',
-    aspectRatio: 1, // 1:1 square
-    outputWidth: 400,
-    outputHeight: 400,
-    boxWidth: 240,
-    boxHeight: 240,
-    badgeText: '400 × 400 px (1:1 Square)'
-  },
-  cover: {
-    title: 'Crop Restaurant Cover Image',
-    subtitle: 'Drag to position and zoom to frame your cover banner in 16:6 landscape format.',
-    aspectRatio: 16 / 6, // 2.66667
-    outputWidth: 1600,
-    outputHeight: 600,
-    boxWidth: 360,
-    boxHeight: 135, // 360 / (16/6)
-    badgeText: '16:6 Landscape (1600 × 600 px)'
-  }
-};
-
-function openImageCropper(mode, imageSrc) {
-  currentCropMode = mode;
-  const cfg = CROP_CONFIGS[mode];
-  if (!cfg) return;
-
-  if (cropperTitle) cropperTitle.textContent = cfg.title;
-  if (cropperSubtitle) cropperSubtitle.textContent = cfg.subtitle;
-  if (cropperDimensionsBadge) cropperDimensionsBadge.textContent = cfg.badgeText;
-
-  // Set crop frame box dimensions
-  if (cropFrameBox) {
-    cropFrameBox.style.width = `${cfg.boxWidth}px`;
-    cropFrameBox.style.height = `${cfg.boxHeight}px`;
-    cropFrameBox.style.left = `calc(50% - ${cfg.boxWidth / 2}px)`;
-    cropFrameBox.style.top = `calc(50% - ${cfg.boxHeight / 2}px)`;
-  }
-
-  // Update SVG mask cutout
-  if (cropMaskRect) {
-    cropMaskRect.setAttribute('x', `calc(50% - ${cfg.boxWidth / 2}px)`);
-    cropMaskRect.setAttribute('y', `calc(50% - ${cfg.boxHeight / 2}px)`);
-    cropMaskRect.setAttribute('width', `${cfg.boxWidth}`);
-    cropMaskRect.setAttribute('height', `${cfg.boxHeight}`);
-  }
-
-  // Reset transforms
-  cropZoom = 1;
-  cropPan = { x: 0, y: 0 };
-  if (cropperZoomSlider) cropperZoomSlider.value = 1;
-
-  if (cropperSourceImg) {
-    cropperSourceImg.src = imageSrc;
-    cropperSourceImg.onload = () => {
-      const imgW = cropperSourceImg.naturalWidth;
-      const imgH = cropperSourceImg.naturalHeight;
-      const scale = Math.max(cfg.boxWidth / imgW, cfg.boxHeight / imgH, 1);
-      cropperSourceImg.style.width = `${imgW * (cfg.boxWidth / imgW)}px`;
-      cropperSourceImg.style.height = 'auto';
-      updateCropperTransform();
-    };
-  }
-
-  if (cropperModal) {
-    cropperModal.style.display = 'flex';
-  }
-}
-
-function closeImageCropper() {
-  if (cropperModal) {
-    cropperModal.style.display = 'none';
-  }
-}
-
-function updateCropperTransform() {
-  if (cropperTransformContainer) {
-    cropperTransformContainer.style.transform = `translate(${cropPan.x}px, ${cropPan.y}px) scale(${cropZoom})`;
-  }
-}
-
-// Mouse dragging handlers
-if (cropperCanvasArea) {
-  cropperCanvasArea.addEventListener('mousedown', (e) => {
-    e.preventDefault();
-    isCropDragging = true;
-    cropperCanvasArea.classList.add('dragging');
-    cropDragStart = { x: e.clientX - cropPan.x, y: e.clientY - cropPan.y };
-  });
-
-  window.addEventListener('mousemove', (e) => {
-    if (!isCropDragging) return;
-    cropPan = {
-      x: e.clientX - cropDragStart.x,
-      y: e.clientY - cropDragStart.y
-    };
-    updateCropperTransform();
-  });
-
-  window.addEventListener('mouseup', () => {
-    if (isCropDragging) {
-      isCropDragging = false;
-      cropperCanvasArea.classList.remove('dragging');
-    }
-  });
-
-  // Touch drag handlers
-  cropperCanvasArea.addEventListener('touchstart', (e) => {
-    if (e.touches.length === 1) {
-      const t = e.touches[0];
-      isCropDragging = true;
-      cropDragStart = { x: t.clientX - cropPan.x, y: t.clientY - cropPan.y };
-    }
-  });
-
-  cropperCanvasArea.addEventListener('touchmove', (e) => {
-    if (!isCropDragging || e.touches.length !== 1) return;
-    const t = e.touches[0];
-    cropPan = {
-      x: t.clientX - cropDragStart.x,
-      y: t.clientY - cropDragStart.y
-    };
-    updateCropperTransform();
-  });
-
-  cropperCanvasArea.addEventListener('touchend', () => {
-    isCropDragging = false;
-  });
-
-  // Wheel zoom
-  cropperCanvasArea.addEventListener('wheel', (e) => {
-    e.preventDefault();
-    const delta = e.deltaY < 0 ? 0.08 : -0.08;
-    cropZoom = Math.min(Math.max(0.5, cropZoom + delta), 3.5);
-    if (cropperZoomSlider) cropperZoomSlider.value = cropZoom;
-    updateCropperTransform();
-  });
-}
-
-// Zoom range and buttons
-if (cropperZoomSlider) {
-  cropperZoomSlider.addEventListener('input', () => {
-    cropZoom = parseFloat(cropperZoomSlider.value);
-    updateCropperTransform();
-  });
-}
-
-if (zoomInBtn) {
-  zoomInBtn.addEventListener('click', () => {
-    cropZoom = Math.min(3.5, cropZoom + 0.15);
-    if (cropperZoomSlider) cropperZoomSlider.value = cropZoom;
-    updateCropperTransform();
-  });
-}
-
-if (zoomOutBtn) {
-  zoomOutBtn.addEventListener('click', () => {
-    cropZoom = Math.max(0.5, cropZoom - 0.15);
-    if (cropperZoomSlider) cropperZoomSlider.value = cropZoom;
-    updateCropperTransform();
-  });
-}
-
-if (zoomResetBtn) {
-  zoomResetBtn.addEventListener('click', () => {
-    cropZoom = 1;
-    cropPan = { x: 0, y: 0 };
-    if (cropperZoomSlider) cropperZoomSlider.value = 1;
-    updateCropperTransform();
-  });
-}
-
-if (closeCropperModalBtn) closeCropperModalBtn.addEventListener('click', closeImageCropper);
-if (cancelCropperBtn) cancelCropperBtn.addEventListener('click', closeImageCropper);
-
-// Perform HTML5 Canvas Crop
-if (applyCropBtn) {
-  applyCropBtn.addEventListener('click', () => {
-    const cfg = CROP_CONFIGS[currentCropMode];
-    if (!cfg || !cropperSourceImg || !cropperSourceImg.src) return;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = cfg.outputWidth;
-    canvas.height = cfg.outputHeight;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const naturalW = cropperSourceImg.naturalWidth || cfg.outputWidth;
-    const naturalH = cropperSourceImg.naturalHeight || cfg.outputHeight;
-    const displayedW = cropperSourceImg.offsetWidth || cfg.boxWidth;
-    const displayedH = cropperSourceImg.offsetHeight || cfg.boxHeight;
-
-    const scaleX = naturalW / displayedW;
-    const scaleY = naturalH / displayedH;
-
-    const safeZoom = Math.max(0.1, cropZoom);
-    const cropCenterX = displayedW / 2 - (cropPan.x / safeZoom);
-    const cropCenterY = displayedH / 2 - (cropPan.y / safeZoom);
-
-    const sourceCropW = (cfg.boxWidth / safeZoom) * scaleX;
-    const sourceCropH = (cfg.boxHeight / safeZoom) * scaleY;
-
-    const sourceCropX = (cropCenterX - (cfg.boxWidth / (2 * safeZoom))) * scaleX;
-    const sourceCropY = (cropCenterY - (cfg.boxHeight / (2 * safeZoom))) * scaleY;
-
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-
-    ctx.drawImage(
-      cropperSourceImg,
-      sourceCropX,
-      sourceCropY,
-      sourceCropW,
-      sourceCropH,
-      0,
-      0,
-      cfg.outputWidth,
-      cfg.outputHeight
-    );
-
-    const croppedResult = canvas.toDataURL('image/png', 0.95);
-
-    if (currentCropMode === 'logo') {
-      if (croppedLogoData) croppedLogoData.value = croppedResult;
-      if (logoPreviewImg) logoPreviewImg.src = croppedResult;
-      if (logoUploadBox) logoUploadBox.style.display = 'none';
-      if (logoPreviewCard) logoPreviewCard.style.display = 'flex';
-      showNotification('Restaurant Logo cropped to 400 × 400 px successfully!', 'success');
-    } else if (currentCropMode === 'cover') {
-      if (croppedCoverData) croppedCoverData.value = croppedResult;
-      if (coverPreviewImg) coverPreviewImg.src = croppedResult;
-      if (coverUploadBox) coverUploadBox.style.display = 'none';
-      if (coverPreviewCard) coverPreviewCard.style.display = 'flex';
-      showNotification('Restaurant Cover cropped to landscape (16:6) successfully!', 'success');
-    }
-
-    closeImageCropper();
-  });
-}
-
-// File input change handlers
-if (logoFileInput) {
-  logoFileInput.addEventListener('change', (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      rawLogoDataUrl = evt.target.result;
-      openImageCropper('logo', rawLogoDataUrl);
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-if (coverFileInput) {
-  coverFileInput.addEventListener('change', (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      rawCoverDataUrl = evt.target.result;
-      openImageCropper('cover', rawCoverDataUrl);
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-// Re-crop buttons
-if (reCropLogoBtn) {
-  reCropLogoBtn.addEventListener('click', () => {
-    if (rawLogoDataUrl) {
-      openImageCropper('logo', rawLogoDataUrl);
-    } else if (logoFileInput) {
-      logoFileInput.click();
-    }
-  });
-}
-
-if (removeLogoBtn) {
-  removeLogoBtn.addEventListener('click', () => {
-    if (logoFileInput) logoFileInput.value = '';
-    if (croppedLogoData) croppedLogoData.value = '';
-    rawLogoDataUrl = null;
-    if (logoPreviewCard) logoPreviewCard.style.display = 'none';
-    if (logoUploadBox) logoUploadBox.style.display = 'flex';
-  });
-}
-
-if (reCropCoverBtn) {
-  reCropCoverBtn.addEventListener('click', () => {
-    if (rawCoverDataUrl) {
-      openImageCropper('cover', rawCoverDataUrl);
-    } else if (coverFileInput) {
-      coverFileInput.click();
-    }
-  });
-}
-
-if (removeCoverBtn) {
-  removeCoverBtn.addEventListener('click', () => {
-    if (coverFileInput) coverFileInput.value = '';
-    if (croppedCoverData) croppedCoverData.value = '';
-    rawCoverDataUrl = null;
-    if (coverPreviewCard) coverPreviewCard.style.display = 'none';
-    if (coverUploadBox) coverUploadBox.style.display = 'flex';
-  });
-}
-
-/* ==========================================================
-   WHATSAPP OTP VERIFICATION MODAL CONTROLLER
-   ========================================================== */
-const otpModal = document.getElementById('otpModal');
-const closeOtpModalBtn = document.getElementById('closeOtpModalBtn');
-const cancelOtpModalBtn = document.getElementById('cancelOtpModalBtn');
-const verifyOtpBtn = document.getElementById('verifyOtpBtn');
-const otpTargetPhoneDisplay = document.getElementById('otpTargetPhoneDisplay');
-const otpErrorAlert = document.getElementById('otpErrorAlert');
-const otpTimerText = document.getElementById('otpTimerText');
-const otpCountdown = document.getElementById('otpCountdown');
-const resendOtpBtn = document.getElementById('resendOtpBtn');
-const otpBoxes = document.querySelectorAll('.otp-digit-box');
-
-let otpTimerInterval = null;
-let otpSuccessCallback = null;
-
-function openWhatsAppOtpModal(phoneNumber, onVerified) {
-  otpSuccessCallback = onVerified;
-  if (otpTargetPhoneDisplay) {
-    otpTargetPhoneDisplay.textContent = phoneNumber;
-  }
-  if (otpErrorAlert) {
-    otpErrorAlert.style.display = 'none';
-  }
-  
   // Clear existing inputs
   otpBoxes.forEach(b => {
     b.value = '';
